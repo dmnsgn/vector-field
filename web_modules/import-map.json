@@ -1,0 +1,9 @@
+{
+  "imports": {
+    "three": "./three.js",
+    "three/examples/jsm/controls/OrbitControls": "./three/examples/jsm/controls/OrbitControls.js",
+    "dat.gui": "./dat.gui.js",
+    "es-module-shims": "./es-module-shims.js",
+    "simplex-noise": "./simplex-noise.js"
+  }
+}

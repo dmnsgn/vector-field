@@ -1,0 +1,67 @@
+{
+  "name": "vector-field",
+  "version": "1.0.0",
+  "description": "A data structure and lookup for 3D vector fields (flow fields).",
+  "type": "module",
+  "main": "index.js",
+  "module": "index.js",
+  "keywords": [
+    "vector-field",
+    "flow-field",
+    "3d",
+    "flow",
+    "vectors",
+    "lookup",
+    "noise",
+    "perlin"
+  ],
+  "author": "Damien Seguin (https://github.com/dmnsgn)",
+  "license": "MIT",
+  "scripts": {
+    "prepare": "npx snowpack",
+    "build": "npx snowpack --optimize"
+  },
+  "devDependencies": {
+    "dat.gui": "^0.7.6",
+    "es-module-shims": "^0.4.6",
+    "eslint": "^6.8.0",
+    "eslint-config-prettier": "^6.9.0",
+    "eslint-plugin-prettier": "^3.1.2",
+    "prettier": "^1.19.1",
+    "simplex-noise": "^2.4.0",
+    "snowpack": "^1.0.4",
+    "three": "^0.112.1"
+  },
+  "snowpack": {
+    "webDependencies": [
+      "three",
+      "three/examples/jsm/controls/OrbitControls.js",
+      "dat.gui",
+      "es-module-shims",
+      "simplex-noise"
+    ]
+  },
+  "eslintConfig": {
+    "extends": [
+      "eslint:recommended",
+      "plugin:prettier/recommended"
+    ],
+    "plugins": [
+      "prettier"
+    ],
+    "rules": {
+      "prettier/prettier": "error"
+    },
+    "parserOptions": {
+      "ecmaVersion": 2020,
+      "sourceType": "module"
+    },
+    "env": {
+      "es6": true,
+      "browser": true
+    }
+  },
+  "eslintIgnore": [
+    "node_modules"
+  ]
+}

@@ -30,7 +30,7 @@
     "prettier": "^1.19.1",
     "simplex-noise": "^2.4.0",
     "snowpack": "^1.0.4",
-    "three": "^0.112.1"
+    "three": "^0.125.0"
   },
   "snowpack": {
     "webDependencies": [

@@ -1,0 +1,11 @@
+{
+  "imports": {
+    "canvas-context": "./canvas-context.js",
+    "core-js": "./core-js.js",
+    "dat.gui": "./dat.gui.js",
+    "es-module-shims": "./es-module-shims.js",
+    "simplex-noise": "./simplex-noise.js",
+    "three": "./three.js",
+    "three/examples/jsm/controls/OrbitControls.js": "./three/examples/jsm/controls/OrbitControls.js"
+  }
+}

@@ -2,9 +2,6 @@
   "name": "vector-field",
   "version": "1.0.0",
   "description": "A data structure and lookup for 3D vector fields (flow fields).",
-  "type": "module",
-  "main": "index.js",
-  "module": "index.js",
   "keywords": [
     "vector-field",
     "flow-field",
@@ -15,53 +12,45 @@
     "noise",
     "perlin"
   ],
-  "author": "Damien Seguin (https://github.com/dmnsgn)",
+  "homepage": "https://github.com/dmnsgn/vector-field",
+  "bugs": "https://github.com/dmnsgn/vector-field/issues",
+  "repository": "dmnsgn/vector-field",
+  "funding": [
+    {
+      "type": "individual",
+      "url": "https://paypal.me/dmnsgn"
+    },
+    {
+      "type": "individual",
+      "url": "https://commerce.coinbase.com/checkout/56cbdf28-e323-48d8-9c98-7019e72c97f3"
+    }
+  ],
   "license": "MIT",
-  "scripts": {
-    "prepare": "npx snowpack",
-    "build": "npx snowpack --optimize"
-  },
+  "author": "Damien Seguin (https://github.com/dmnsgn)",
+  "type": "module",
+  "main": "index.js",
+  "types": "types/index.d.ts",
   "devDependencies": {
-    "dat.gui": "^0.7.6",
-    "es-module-shims": "^0.4.6",
-    "eslint": "^6.8.0",
-    "eslint-config-prettier": "^6.9.0",
-    "eslint-plugin-prettier": "^3.1.2",
-    "prettier": "^1.19.1",
+    "canvas-context": "^3.0.2",
+    "core-js": "^3.10.1",
+    "dat.gui": "^0.7.7",
+    "es-module-shims": "^0.10.4",
     "simplex-noise": "^2.4.0",
-    "snowpack": "^1.0.4",
-    "three": "^0.112.1"
+    "three": "^0.127.0"
   },
-  "snowpack": {
-    "webDependencies": [
-      "three",
+  "engines": {
+    "node": ">=15.0.0",
+    "npm": ">=7.0.0"
+  },
+  "snowdev": {
+    "dependencies": [
       "three/examples/jsm/controls/OrbitControls.js",
+      "canvas-context",
+      "core-js",
       "dat.gui",
       "es-module-shims",
-      "simplex-noise"
+      "simplex-noise",
+      "three"
     ]
-  },
-  "eslintConfig": {
-    "extends": [
-      "eslint:recommended",
-      "plugin:prettier/recommended"
-    ],
-    "plugins": [
-      "prettier"
-    ],
-    "rules": {
-      "prettier/prettier": "error"
-    },
-    "parserOptions": {
-      "ecmaVersion": 2020,
-      "sourceType": "module"
-    },
-    "env": {
-      "es6": true,
-      "browser": true
-    }
-  },
-  "eslintIgnore": [
-    "node_modules"
-  ]
+  }
 }

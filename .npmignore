@@ -1,4 +1,10 @@
-index.html
-demo.js
 web_modules
-screenshot.gif
+examples
+docs
+coverage
+test
+.github
+screenshot.*
+index.html
+tsconfig.json
+.editorconfig

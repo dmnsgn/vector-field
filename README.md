@@ -60,7 +60,108 @@ requestAnimationFrame(() => {
 
 <!-- api-start -->
 
-Auto-generated API content.
+## Classes
+
+<dl>
+<dt><a href="#VectorField">VectorField</a></dt>
+<dd><p>A data structure and lookup for 3D vector fields (flow fields).</p>
+</dd>
+</dl>
+
+## Typedefs
+
+<dl>
+<dt><a href="#vec3">vec3</a> : <code>Array.&lt;number&gt;</code></dt>
+<dd></dd>
+<dt><a href="#VectorFieldCell">VectorFieldCell</a> : <code>Object</code></dt>
+<dd></dd>
+<dt><a href="#VectorFieldDirectionFn">VectorFieldDirectionFn</a> : <code>function</code></dt>
+<dd><p>The custom function to compute the cell direction (often a noise function)</p>
+</dd>
+</dl>
+
+<a name="VectorField"></a>
+
+## VectorField
+
+A data structure and lookup for 3D vector fields (flow fields).
+
+**Kind**: global class  
+**Properties**
+
+| Name        | Type                                                           |
+| ----------- | -------------------------------------------------------------- |
+| directionFn | [<code>VectorFieldDirectionFn</code>](#VectorFieldDirectionFn) |
+| steps       | [<code>vec3</code>](#vec3)                                     |
+| bounds      | [<code>vec3</code>](#vec3)                                     |
+| halfBounds  | [<code>vec3</code>](#vec3)                                     |
+| field       | [<code>Array.&lt;VectorFieldCell&gt;</code>](#VectorFieldCell) |
+
+- [VectorField](#VectorField)
+  - [new VectorField(directionFn, [steps], [bounds])](#new_VectorField_new)
+  - [.update()](#VectorField+update)
+  - [.lookup(cell)](#VectorField+lookup) ⇒ [<code>VectorFieldCell</code>](#VectorFieldCell) \| <code>undefined</code>
+
+<a name="new_VectorField_new"></a>
+
+### new VectorField(directionFn, [steps], [bounds])
+
+Creates an instance of VectorField.
+
+| Param       | Type                                                           | Default         | Description                                                                                                                                |
+| ----------- | -------------------------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| directionFn | [<code>VectorFieldDirectionFn</code>](#VectorFieldDirectionFn) |                 | The custom function to compute the cell direction (often a noise function)                                                                 |
+| [steps]     | <code>number</code> \| [<code>vec3</code>](#vec3)              | <code>10</code> | The number of steps on each dimension (all positive integer). Use integer for identical dimensions.                                        |
+| [bounds]    | <code>number</code> \| [<code>vec3</code>](#vec3)              | <code>1</code>  | The size of a containing box for the field. Is divided into steps for each dimension (all positive). Use integer for identical dimensions. |
+
+<a name="VectorField+update"></a>
+
+### vectorField.update()
+
+Create/update the field according to the provided noise function.
+
+**Kind**: instance method of [<code>VectorField</code>](#VectorField)  
+<a name="VectorField+lookup"></a>
+
+### vectorField.lookup(cell) ⇒ [<code>VectorFieldCell</code>](#VectorFieldCell) \| <code>undefined</code>
+
+Find a `VectorFieldCell` at specified position. Useful to compute a particle's velocity for instance.
+
+**Kind**: instance method of [<code>VectorField</code>](#VectorField)
+
+| Param | Type                       | Description  |
+| ----- | -------------------------- | ------------ |
+| cell  | [<code>vec3</code>](#vec3) | [cx, cy, cz] |
+
+<a name="vec3"></a>
+
+## vec3 : <code>Array.&lt;number&gt;</code>
+
+**Kind**: global typedef  
+<a name="VectorFieldCell"></a>
+
+## VectorFieldCell : <code>Object</code>
+
+**Kind**: global typedef  
+**Properties**
+
+| Name      | Type                       |
+| --------- | -------------------------- |
+| position  | [<code>vec3</code>](#vec3) |
+| direction | [<code>vec3</code>](#vec3) |
+
+<a name="VectorFieldDirectionFn"></a>
+
+## VectorFieldDirectionFn : <code>function</code>
+
+The custom function to compute the cell direction (often a noise function)
+
+**Kind**: global typedef
+
+| Param        | Type                       |
+| ------------ | -------------------------- |
+| position     | [<code>vec3</code>](#vec3) |
+| stepPosition | [<code>vec3</code>](#vec3) |
 
 <!-- api-end -->
 

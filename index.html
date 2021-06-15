@@ -60,7 +60,7 @@
 
       import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-      import * as dat from "dat.gui";
+      import { Pane } from "tweakpane";
 
       const CONFIG = {
         speed: 100,
@@ -110,9 +110,9 @@
       vectorField.update();
 
       // GUI
-      const gui = new dat.GUI();
-      gui.add(CONFIG, "speed", 0, 500);
-      gui.add(CONFIG, "scale", 0, 1);
+      const pane = new Pane();
+      pane.addInput(CONFIG, "speed", { min: 0, max: 500 });
+      pane.addInput(CONFIG, "scale", { min: 0, max: 1 });
 
       // SCENE
       const { context, canvas } = createCanvasContext("webgl");

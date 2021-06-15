@@ -1,4 +1,4 @@
-import { M as classofRaw, T as objectKeysInternal, U as enumBugKeys, d as descriptors, k as anObject, a as objectDefineProperty, b as getBuiltIn, s as sharedKey, q as hiddenKeys, P as documentCreateElement, w as wellKnownSymbol, h as has, y as isObject, x as toObject, H as indexedObject, D as toLength, f as fails, E as toAbsoluteIndex, r as redefine, F as toInteger, g as global_1, e as createNonEnumerableProperty, o as objectGetOwnPropertyNames, i as internalState, u as uid, K as createCommonjsModule, _ as _export, l as toPrimitive, j as objectGetOwnPropertyDescriptor, m as createPropertyDescriptor } from './well-known-symbol-3fcda878.js';
+import { R as classofRaw, Z as objectKeysInternal, $ as enumBugKeys, d as descriptors, k as anObject, a as objectDefineProperty, b as getBuiltIn, s as sharedKey, q as hiddenKeys, V as documentCreateElement, w as wellKnownSymbol, h as has, y as isObject, x as toObject, M as indexedObject, F as functionBindContext, D as toLength, f as fails, E as toAbsoluteIndex, r as redefine, G as toInteger, g as global_1, e as createNonEnumerableProperty, o as objectGetOwnPropertyNames, i as internalState, u as uid, U as classof, I as getIteratorMethod, J as isArrayIteratorMethod, P as createCommonjsModule, _ as _export, l as toPrimitive, j as objectGetOwnPropertyDescriptor, m as createPropertyDescriptor } from './get-iterator-method-a5a16e8a.js';
 
 // `IsArray` abstract operation
 // https://tc39.es/ecma262/#sec-isarray
@@ -110,35 +110,6 @@ var setToStringTag = function (it, TAG, STATIC) {
   if (it && !has(it = STATIC ? it : it.prototype, TO_STRING_TAG)) {
     defineProperty(it, TO_STRING_TAG, { configurable: true, value: TAG });
   }
-};
-
-var aFunction = function (it) {
-  if (typeof it != 'function') {
-    throw TypeError(String(it) + ' is not a function');
-  } return it;
-};
-
-// optional / simple context binding
-var functionBindContext = function (fn, that, length) {
-  aFunction(fn);
-  if (that === undefined) return fn;
-  switch (length) {
-    case 0: return function () {
-      return fn.call(that);
-    };
-    case 1: return function (a) {
-      return fn.call(that, a);
-    };
-    case 2: return function (a, b) {
-      return fn.call(that, a, b);
-    };
-    case 3: return function (a, b, c) {
-      return fn.call(that, a, b, c);
-    };
-  }
-  return function (/* ...args */) {
-    return fn.apply(that, arguments);
-  };
 };
 
 var SPECIES = wellKnownSymbol('species');
@@ -279,54 +250,6 @@ var objectSetPrototypeOf = Object.setPrototypeOf || ('__proto__' in {} ? functio
   };
 }() : undefined);
 
-var iterators = {};
-
-var ITERATOR = wellKnownSymbol('iterator');
-var ArrayPrototype = Array.prototype;
-
-// check on default Array iterator
-var isArrayIteratorMethod = function (it) {
-  return it !== undefined && (iterators.Array === it || ArrayPrototype[ITERATOR] === it);
-};
-
-var TO_STRING_TAG$1 = wellKnownSymbol('toStringTag');
-var test = {};
-
-test[TO_STRING_TAG$1] = 'z';
-
-var toStringTagSupport = String(test) === '[object z]';
-
-var TO_STRING_TAG$2 = wellKnownSymbol('toStringTag');
-// ES3 wrong here
-var CORRECT_ARGUMENTS = classofRaw(function () { return arguments; }()) == 'Arguments';
-
-// fallback for IE11 Script Access Denied error
-var tryGet = function (it, key) {
-  try {
-    return it[key];
-  } catch (error) { /* empty */ }
-};
-
-// getting tag from ES6+ `Object.prototype.toString`
-var classof = toStringTagSupport ? classofRaw : function (it) {
-  var O, tag, result;
-  return it === undefined ? 'Undefined' : it === null ? 'Null'
-    // @@toStringTag case
-    : typeof (tag = tryGet(O = Object(it), TO_STRING_TAG$2)) == 'string' ? tag
-    // builtinTag case
-    : CORRECT_ARGUMENTS ? classofRaw(O)
-    // ES3 arguments fallback
-    : (result = classofRaw(O)) == 'Object' && typeof O.callee == 'function' ? 'Arguments' : result;
-};
-
-var ITERATOR$1 = wellKnownSymbol('iterator');
-
-var getIteratorMethod = function (it) {
-  if (it != undefined) return it[ITERATOR$1]
-    || it['@@iterator']
-    || iterators[classof(it)];
-};
-
 // `Array.prototype.fill` method implementation
 // https://tc39.es/ecma262/#sec-array.prototype.fill
 var arrayFill = function fill(value /* , start = 0, end = @length */) {
@@ -340,7 +263,7 @@ var arrayFill = function fill(value /* , start = 0, end = @length */) {
   return O;
 };
 
-var ITERATOR$2 = wellKnownSymbol('iterator');
+var ITERATOR = wellKnownSymbol('iterator');
 var SAFE_CLOSING = false;
 
 try {
@@ -353,7 +276,7 @@ try {
       SAFE_CLOSING = true;
     }
   };
-  iteratorWithReturn[ITERATOR$2] = function () {
+  iteratorWithReturn[ITERATOR] = function () {
     return this;
   };
   // eslint-disable-next-line es/no-array-from, no-throw-literal -- required for testing
@@ -365,7 +288,7 @@ var checkCorrectnessOfIteration = function (exec, SKIP_CLOSING) {
   var ITERATION_SUPPORT = false;
   try {
     var object = {};
-    object[ITERATOR$2] = function () {
+    object[ITERATOR] = function () {
       return {
         next: function () {
           return { done: ITERATION_SUPPORT = true };
@@ -732,7 +655,7 @@ var TypedArrayPrototype = Int8ArrayPrototype && objectGetPrototypeOf(Int8ArrayPr
 var ObjectPrototype$2 = Object.prototype;
 var isPrototypeOf = ObjectPrototype$2.isPrototypeOf;
 
-var TO_STRING_TAG$3 = wellKnownSymbol('toStringTag');
+var TO_STRING_TAG$1 = wellKnownSymbol('toStringTag');
 var TYPED_ARRAY_TAG = uid('TYPED_ARRAY_TAG');
 // Fixing native typed arrays in Opera Presto crashes the browser, see #595
 var NATIVE_ARRAY_BUFFER_VIEWS = arrayBufferNative && !!objectSetPrototypeOf && classof(global_1.opera) !== 'Opera';
@@ -791,9 +714,9 @@ var exportTypedArrayMethod = function (KEY, property, forced) {
   if (!descriptors) return;
   if (forced) for (var ARRAY in TypedArrayConstructorsList) {
     var TypedArrayConstructor = global_1[ARRAY];
-    if (TypedArrayConstructor && has(TypedArrayConstructor.prototype, KEY)) {
+    if (TypedArrayConstructor && has(TypedArrayConstructor.prototype, KEY)) try {
       delete TypedArrayConstructor.prototype[KEY];
-    }
+    } catch (error) { /* empty */ }
   }
   if (!TypedArrayPrototype[KEY] || forced) {
     redefine(TypedArrayPrototype, KEY, forced ? property
@@ -807,14 +730,14 @@ var exportTypedArrayStaticMethod = function (KEY, property, forced) {
   if (objectSetPrototypeOf) {
     if (forced) for (ARRAY in TypedArrayConstructorsList) {
       TypedArrayConstructor = global_1[ARRAY];
-      if (TypedArrayConstructor && has(TypedArrayConstructor, KEY)) {
+      if (TypedArrayConstructor && has(TypedArrayConstructor, KEY)) try {
         delete TypedArrayConstructor[KEY];
-      }
+      } catch (error) { /* empty */ }
     }
     if (!TypedArray[KEY] || forced) {
       // V8 ~ Chrome 49-50 `%TypedArray%` methods are non-writable non-configurable
       try {
-        return redefine(TypedArray, KEY, forced ? property : NATIVE_ARRAY_BUFFER_VIEWS && Int8Array[KEY] || property);
+        return redefine(TypedArray, KEY, forced ? property : NATIVE_ARRAY_BUFFER_VIEWS && TypedArray[KEY] || property);
       } catch (error) { /* empty */ }
     } else return;
   }
@@ -853,9 +776,9 @@ if (NATIVE_ARRAY_BUFFER_VIEWS && objectGetPrototypeOf(Uint8ClampedArrayPrototype
   objectSetPrototypeOf(Uint8ClampedArrayPrototype, TypedArrayPrototype);
 }
 
-if (descriptors && !has(TypedArrayPrototype, TO_STRING_TAG$3)) {
+if (descriptors && !has(TypedArrayPrototype, TO_STRING_TAG$1)) {
   TYPED_ARRAY_TAG_REQIRED = true;
-  defineProperty$2(TypedArrayPrototype, TO_STRING_TAG$3, { get: function () {
+  defineProperty$2(TypedArrayPrototype, TO_STRING_TAG$1, { get: function () {
     return isObject(this) ? this[TYPED_ARRAY_TAG] : undefined;
   } });
   for (NAME in TypedArrayConstructorsList) if (global_1[NAME]) {
@@ -1202,4 +1125,4 @@ typedArrayConstructor('Uint8', function (init) {
   };
 });
 
-export { html as A, aPossiblePrototype as B, typedArrayFrom as C, typedArrayConstructorsRequireWrappers as D, toOffset as E, toPositiveInteger as F, typedArrayConstructor as G, arrayIteration as a, objectCreate as b, objectSetPrototypeOf as c, objectGetPrototypeOf as d, arraySpeciesCreate as e, arrayFill as f, functionBindContext as g, aFunction as h, isArray as i, getIteratorMethod as j, isArrayIteratorMethod as k, checkCorrectnessOfIteration as l, iterators as m, setSpecies as n, objectKeys as o, arrayBuffer as p, arrayBufferViewCore as q, arrayBufferNative as r, setToStringTag as s, anInstance as t, inheritIfRequired as u, redefineAll as v, objectDefineProperties as w, correctPrototypeGetter as x, toStringTagSupport as y, classof as z };
+export { arrayIteration as a, objectCreate as b, objectSetPrototypeOf as c, objectGetPrototypeOf as d, arraySpeciesCreate as e, arrayFill as f, checkCorrectnessOfIteration as g, setSpecies as h, isArray as i, arrayBuffer as j, arrayBufferViewCore as k, arrayBufferNative as l, anInstance as m, inheritIfRequired as n, objectKeys as o, objectDefineProperties as p, correctPrototypeGetter as q, redefineAll as r, setToStringTag as s, html as t, aPossiblePrototype as u, typedArrayFrom as v, typedArrayConstructorsRequireWrappers as w, toOffset as x, toPositiveInteger as y, typedArrayConstructor as z };

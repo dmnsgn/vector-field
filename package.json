@@ -1,6 +1,6 @@
 {
   "name": "vector-field",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "description": "A data structure and lookup for 3D vector fields (flow fields).",
   "keywords": [
     "vector-field",

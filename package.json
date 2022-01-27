@@ -37,7 +37,7 @@
     "core-js": "^3.14.0",
     "es-module-shims": "^0.10.7",
     "simplex-noise": "^2.4.0",
-    "three": "^0.129.0",
+    "three": "^0.137.0",
     "tweakpane": "^3.0.2"
   },
   "engines": {

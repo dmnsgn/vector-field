@@ -38,9 +38,9 @@ const directionFn = ([x, y, z]) => {
   const phi = n;
 
   return [
+    Math.sin(theta) * Math.cos(phi),
     Math.sin(theta) * Math.sin(phi),
     Math.cos(theta),
-    Math.sin(theta) * Math.cos(phi),
   ];
 };
 const vectorField = new VectorField(directionFn, [12, 6, 6], 1);

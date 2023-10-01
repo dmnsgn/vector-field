@@ -73,7 +73,7 @@ requestAnimationFrame(() => {
 <dl>
 <dt><a href="#vec3">vec3</a> : <code>Array.&lt;number&gt;</code></dt>
 <dd></dd>
-<dt><a href="#VectorFieldCell">VectorFieldCell</a> : <code>Object</code></dt>
+<dt><a href="#VectorFieldCell">VectorFieldCell</a> : <code>object</code></dt>
 <dd></dd>
 <dt><a href="#VectorFieldDirectionFn">VectorFieldDirectionFn</a> : <code>function</code></dt>
 <dd><p>The custom function to compute the cell direction (often a noise function)</p>
@@ -86,7 +86,7 @@ requestAnimationFrame(() => {
 
 A data structure and lookup for 3D vector fields (flow fields).
 
-**Kind**: global class  
+**Kind**: global class
 **Properties**
 
 | Name        | Type                                                           |
@@ -120,7 +120,7 @@ Creates an instance of VectorField.
 
 Create/update the field according to the provided noise function.
 
-**Kind**: instance method of [<code>VectorField</code>](#VectorField)  
+**Kind**: instance method of [<code>VectorField</code>](#VectorField)
 <a name="VectorField+lookup"></a>
 
 ### vectorField.lookup(cell) ⇒ [<code>VectorFieldCell</code>](#VectorFieldCell) \| <code>undefined</code>
@@ -137,12 +137,12 @@ Find a `VectorFieldCell` at specified position. Useful to compute a particle's v
 
 ## vec3 : <code>Array.&lt;number&gt;</code>
 
-**Kind**: global typedef  
+**Kind**: global typedef
 <a name="VectorFieldCell"></a>
 
-## VectorFieldCell : <code>Object</code>
+## VectorFieldCell : <code>object</code>
 
-**Kind**: global typedef  
+**Kind**: global typedef
 **Properties**
 
 | Name      | Type                       |

@@ -1,6 +1,6 @@
 {
   "name": "vector-field",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "A data structure and lookup for 3D vector fields (flow fields).",
   "keywords": [
     "vector-field",
@@ -53,7 +53,10 @@
       "three"
     ],
     "resolve": {
-      "exclude": ["**.d.ts", "**/three/examples/!(jsm/controls/OrbitControls.js)/**/*.*"]
+      "exclude": [
+        "**.d.ts",
+        "**/three/examples/!(jsm/controls/OrbitControls.js)/**/*.*"
+      ]
     }
   }
 }

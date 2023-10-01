@@ -56,7 +56,7 @@ class VectorField {
           ];
           this.field[x][y][z].direction = this.directionFn(
             this.field[x][y][z].position,
-            [x, y, z]
+            [x, y, z],
           );
         }
       }
@@ -72,15 +72,15 @@ class VectorField {
   lookup([cx, cy, cz]) {
     return this.field[
       Math.round(
-        remap(cx, -this.halfBounds[0], this.halfBounds[0], 0, this.steps[0])
+        remap(cx, -this.halfBounds[0], this.halfBounds[0], 0, this.steps[0]),
       )
     ]?.[
       Math.round(
-        remap(cy, -this.halfBounds[1], this.halfBounds[1], 0, this.steps[1])
+        remap(cy, -this.halfBounds[1], this.halfBounds[1], 0, this.steps[1]),
       )
     ]?.[
       Math.round(
-        remap(cz, -this.halfBounds[2], this.halfBounds[2], 0, this.steps[2])
+        remap(cz, -this.halfBounds[2], this.halfBounds[2], 0, this.steps[2]),
       )
     ];
   }

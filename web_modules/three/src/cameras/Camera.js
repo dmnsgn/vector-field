@@ -1,0 +1,46 @@
+import { WebGLCoordinateSystem } from '../constants.js';
+import { Matrix4 } from '../math/Matrix4.js';
+import { Object3D } from '../core/Object3D.js';
+import '../math/Vector3.js';
+import '../math/MathUtils.js';
+import '../math/Quaternion.js';
+import '../core/EventDispatcher.js';
+import '../math/Euler.js';
+import '../core/Layers.js';
+import '../math/Matrix3.js';
+
+class Camera extends Object3D {
+    copy(source, recursive) {
+        super.copy(source, recursive);
+        this.matrixWorldInverse.copy(source.matrixWorldInverse);
+        this.projectionMatrix.copy(source.projectionMatrix);
+        this.projectionMatrixInverse.copy(source.projectionMatrixInverse);
+        this.coordinateSystem = source.coordinateSystem;
+        return this;
+    }
+    getWorldDirection(target) {
+        return super.getWorldDirection(target).negate();
+    }
+    updateMatrixWorld(force) {
+        super.updateMatrixWorld(force);
+        this.matrixWorldInverse.copy(this.matrixWorld).invert();
+    }
+    updateWorldMatrix(updateParents, updateChildren) {
+        super.updateWorldMatrix(updateParents, updateChildren);
+        this.matrixWorldInverse.copy(this.matrixWorld).invert();
+    }
+    clone() {
+        return new this.constructor().copy(this);
+    }
+    constructor(){
+        super();
+        this.isCamera = true;
+        this.type = 'Camera';
+        this.matrixWorldInverse = new Matrix4();
+        this.projectionMatrix = new Matrix4();
+        this.projectionMatrixInverse = new Matrix4();
+        this.coordinateSystem = WebGLCoordinateSystem;
+    }
+}
+
+export { Camera };

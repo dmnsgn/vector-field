@@ -33,26 +33,27 @@
   "main": "index.js",
   "types": "types/index.d.ts",
   "devDependencies": {
-    "canvas-context": "^3.0.2",
-    "core-js": "^3.14.0",
-    "es-module-shims": "^0.10.7",
-    "simplex-noise": "^2.4.0",
-    "three": "^0.129.0",
-    "tweakpane": "^3.0.2"
+    "canvas-context": "^3.2.0",
+    "es-module-shims": "^1.8.0",
+    "simplex-noise": "^4.0.1",
+    "three": "^0.157.0",
+    "tweakpane": "^4.0.1"
   },
   "engines": {
-    "node": ">=15.0.0",
-    "npm": ">=7.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=8.6.0"
   },
   "snowdev": {
     "dependencies": [
-      "three/examples/jsm/controls/OrbitControls.js",
+      "./three/examples/jsm/controls/OrbitControls.js",
       "canvas-context",
-      "core-js",
       "tweakpane",
       "es-module-shims",
       "simplex-noise",
       "three"
-    ]
+    ],
+    "resolve": {
+      "exclude": ["**.d.ts", "**/three/examples/!(jsm/controls/OrbitControls.js)/**/*.*"]
+    }
   }
 }

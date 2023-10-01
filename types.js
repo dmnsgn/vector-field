@@ -3,7 +3,7 @@
  */
 
 /**
- * @typedef {Object} VectorFieldCell
+ * @typedef {object} VectorFieldCell
  * @property {vec3} position
  * @property {vec3} direction
  */

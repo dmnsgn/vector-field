@@ -87,3 +87,5 @@ class VectorField {
 }
 
 export default VectorField;
+
+export * from "./types.js";

@@ -1,6 +1,6 @@
 {
   "name": "vector-field",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "A data structure and lookup for 3D vector fields (flow fields).",
   "keywords": [
     "vector-field",
@@ -14,7 +14,10 @@
   ],
   "homepage": "https://github.com/dmnsgn/vector-field",
   "bugs": "https://github.com/dmnsgn/vector-field/issues",
-  "repository": "dmnsgn/vector-field",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dmnsgn/vector-field.git"
+  },
   "funding": [
     {
       "type": "individual",

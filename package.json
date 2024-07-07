@@ -33,15 +33,16 @@
   "main": "index.js",
   "types": "types/index.d.ts",
   "devDependencies": {
-    "canvas-context": "^3.2.0",
-    "es-module-shims": "^1.8.0",
+    "canvas-context": "^3.3.0",
+    "es-module-shims": "^1.10.0",
     "simplex-noise": "^4.0.1",
-    "three": "^0.157.0",
-    "tweakpane": "^4.0.1"
+    "three": "^0.166.1",
+    "tweakpane": "^4.0.4"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.6.0"
+    "node": ">=22.0.0",
+    "npm": ">=10.5.1",
+    "snowdev": ">=2.2.x"
   },
   "snowdev": {
     "dependencies": [

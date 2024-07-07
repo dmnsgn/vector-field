@@ -23,6 +23,20 @@ import '../math/Euler.js';
 import '../core/Layers.js';
 
 class SpotLight extends Light {
+    constructor(color, intensity, distance = 0, angle = Math.PI / 3, penumbra = 0, decay = 2){
+        super(color, intensity);
+        this.isSpotLight = true;
+        this.type = 'SpotLight';
+        this.position.copy(Object3D.DEFAULT_UP);
+        this.updateMatrix();
+        this.target = new Object3D();
+        this.distance = distance;
+        this.angle = angle;
+        this.penumbra = penumbra;
+        this.decay = decay;
+        this.map = null;
+        this.shadow = new SpotLightShadow();
+    }
     get power() {
         // compute the light's luminous power (in lumens) from its intensity (in candela)
         // by convention for a spotlight, luminous power (lm) = π * luminous intensity (cd)
@@ -44,20 +58,6 @@ class SpotLight extends Light {
         this.target = source.target.clone();
         this.shadow = source.shadow.clone();
         return this;
-    }
-    constructor(color, intensity, distance = 0, angle = Math.PI / 3, penumbra = 0, decay = 2){
-        super(color, intensity);
-        this.isSpotLight = true;
-        this.type = 'SpotLight';
-        this.position.copy(Object3D.DEFAULT_UP);
-        this.updateMatrix();
-        this.target = new Object3D();
-        this.distance = distance;
-        this.angle = angle;
-        this.penumbra = penumbra;
-        this.decay = decay;
-        this.map = null;
-        this.shadow = new SpotLightShadow();
     }
 }
 

@@ -172,6 +172,13 @@ function hue2rgb(p, q, t) {
     return p;
 }
 class Color {
+    constructor(r, g, b){
+        this.isColor = true;
+        this.r = 1;
+        this.g = 1;
+        this.b = 1;
+        return this.set(r, g, b);
+    }
     set(r, g, b) {
         if (g === undefined && b === undefined) {
             // r is THREE.Color, hex or string
@@ -494,13 +501,6 @@ class Color {
         yield this.r;
         yield this.g;
         yield this.b;
-    }
-    constructor(r, g, b){
-        this.isColor = true;
-        this.r = 1;
-        this.g = 1;
-        this.b = 1;
-        return this.set(r, g, b);
     }
 }
 const _color = /*@__PURE__*/ new Color();

@@ -29,27 +29,6 @@ const _vector = /*@__PURE__*/ new Vector3();
 const _color1 = /*@__PURE__*/ new Color();
 const _color2 = /*@__PURE__*/ new Color();
 class HemisphereLightHelper extends Object3D {
-    dispose() {
-        this.children[0].geometry.dispose();
-        this.children[0].material.dispose();
-    }
-    update() {
-        const mesh = this.children[0];
-        if (this.color !== undefined) {
-            this.material.color.set(this.color);
-        } else {
-            const colors = mesh.geometry.getAttribute('color');
-            _color1.copy(this.light.color);
-            _color2.copy(this.light.groundColor);
-            for(let i = 0, l = colors.count; i < l; i++){
-                const color = i < l / 2 ? _color1 : _color2;
-                colors.setXYZ(i, color.r, color.g, color.b);
-            }
-            colors.needsUpdate = true;
-        }
-        this.light.updateWorldMatrix(true, false);
-        mesh.lookAt(_vector.setFromMatrixPosition(this.light.matrixWorld).negate());
-    }
     constructor(light, size, color){
         super();
         this.light = light;
@@ -70,6 +49,27 @@ class HemisphereLightHelper extends Object3D {
         geometry.setAttribute('color', new BufferAttribute(colors, 3));
         this.add(new Mesh(geometry, this.material));
         this.update();
+    }
+    dispose() {
+        this.children[0].geometry.dispose();
+        this.children[0].material.dispose();
+    }
+    update() {
+        const mesh = this.children[0];
+        if (this.color !== undefined) {
+            this.material.color.set(this.color);
+        } else {
+            const colors = mesh.geometry.getAttribute('color');
+            _color1.copy(this.light.color);
+            _color2.copy(this.light.groundColor);
+            for(let i = 0, l = colors.count; i < l; i++){
+                const color = i < l / 2 ? _color1 : _color2;
+                colors.setXYZ(i, color.r, color.g, color.b);
+            }
+            colors.needsUpdate = true;
+        }
+        this.light.updateWorldMatrix(true, false);
+        mesh.lookAt(_vector.setFromMatrixPosition(this.light.matrixWorld).negate());
     }
 }
 

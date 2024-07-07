@@ -17,14 +17,6 @@ import '../utils.js';
 import '../extras/DataUtils.js';
 
 class TorusGeometry extends BufferGeometry {
-    copy(source) {
-        super.copy(source);
-        this.parameters = Object.assign({}, source.parameters);
-        return this;
-    }
-    static fromJSON(data) {
-        return new TorusGeometry(data.radius, data.tube, data.radialSegments, data.tubularSegments, data.arc);
-    }
     constructor(radius = 1, tube = 0.4, radialSegments = 12, tubularSegments = 48, arc = Math.PI * 2){
         super();
         this.type = 'TorusGeometry';
@@ -84,6 +76,14 @@ class TorusGeometry extends BufferGeometry {
         this.setAttribute('position', new Float32BufferAttribute(vertices, 3));
         this.setAttribute('normal', new Float32BufferAttribute(normals, 3));
         this.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
+    }
+    copy(source) {
+        super.copy(source);
+        this.parameters = Object.assign({}, source.parameters);
+        return this;
+    }
+    static fromJSON(data) {
+        return new TorusGeometry(data.radius, data.tube, data.radialSegments, data.tubularSegments, data.arc);
     }
 }
 

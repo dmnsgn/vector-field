@@ -13,6 +13,8 @@ import './ShaderChunk/alphatest_fragment.glsl.js';
 import './ShaderChunk/alphatest_pars_fragment.glsl.js';
 import './ShaderChunk/aomap_fragment.glsl.js';
 import './ShaderChunk/aomap_pars_fragment.glsl.js';
+import './ShaderChunk/batching_pars_vertex.glsl.js';
+import './ShaderChunk/batching_vertex.glsl.js';
 import './ShaderChunk/begin_vertex.glsl.js';
 import './ShaderChunk/beginnormal_vertex.glsl.js';
 import './ShaderChunk/bsdfs.glsl.js';
@@ -45,7 +47,6 @@ import './ShaderChunk/fog_pars_vertex.glsl.js';
 import './ShaderChunk/fog_fragment.glsl.js';
 import './ShaderChunk/fog_pars_fragment.glsl.js';
 import './ShaderChunk/gradientmap_pars_fragment.glsl.js';
-import './ShaderChunk/lightmap_fragment.glsl.js';
 import './ShaderChunk/lightmap_pars_fragment.glsl.js';
 import './ShaderChunk/lights_lambert_fragment.glsl.js';
 import './ShaderChunk/lights_lambert_pars_fragment.glsl.js';
@@ -70,6 +71,7 @@ import './ShaderChunk/map_particle_fragment.glsl.js';
 import './ShaderChunk/map_particle_pars_fragment.glsl.js';
 import './ShaderChunk/metalnessmap_fragment.glsl.js';
 import './ShaderChunk/metalnessmap_pars_fragment.glsl.js';
+import './ShaderChunk/morphinstance_vertex.glsl.js';
 import './ShaderChunk/morphcolor_vertex.glsl.js';
 import './ShaderChunk/morphnormal_vertex.glsl.js';
 import './ShaderChunk/morphtarget_pars_vertex.glsl.js';
@@ -221,7 +223,7 @@ const ShaderLib = {
                 },
                 envMapIntensity: {
                     value: 1
-                } // temporary
+                }
             }
         ]),
         vertexShader: ShaderChunk.meshphysical_vert,
@@ -350,6 +352,9 @@ const ShaderLib = {
             },
             backgroundIntensity: {
                 value: 1
+            },
+            backgroundRotation: {
+                value: /*@__PURE__*/ new Matrix3()
             }
         },
         vertexShader: ShaderChunk.backgroundCube_vert,
@@ -445,6 +450,9 @@ ShaderLib.physical = {
             },
             clearcoatRoughnessMapTransform: {
                 value: /*@__PURE__*/ new Matrix3()
+            },
+            dispersion: {
+                value: 0
             },
             iridescence: {
                 value: 0

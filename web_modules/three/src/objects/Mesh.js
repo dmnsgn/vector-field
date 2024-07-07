@@ -40,6 +40,14 @@ const _normalC = /*@__PURE__*/ new Vector3();
 const _intersectionPoint = /*@__PURE__*/ new Vector3();
 const _intersectionPointWorld = /*@__PURE__*/ new Vector3();
 class Mesh extends Object3D {
+    constructor(geometry = new BufferGeometry(), material = new MeshBasicMaterial()){
+        super();
+        this.isMesh = true;
+        this.type = 'Mesh';
+        this.geometry = geometry;
+        this.material = material;
+        this.updateMorphTargets();
+    }
     copy(source, recursive) {
         super.copy(source, recursive);
         if (source.morphTargetInfluences !== undefined) {
@@ -199,14 +207,6 @@ class Mesh extends Object3D {
             }
         }
     }
-    constructor(geometry = new BufferGeometry(), material = new MeshBasicMaterial()){
-        super();
-        this.isMesh = true;
-        this.type = 'Mesh';
-        this.geometry = geometry;
-        this.material = material;
-        this.updateMorphTargets();
-    }
 }
 function checkIntersection(object, material, raycaster, ray, pA, pB, pC, point) {
     let intersect;
@@ -243,7 +243,6 @@ function checkGeometryIntersection(object, material, raycaster, ray, uv, uv1, no
             _uvB.fromBufferAttribute(uv1, b);
             _uvC.fromBufferAttribute(uv1, c);
             intersection.uv1 = Triangle.getInterpolation(_intersectionPoint, _vA, _vB, _vC, _uvA, _uvB, _uvC, new Vector2());
-            intersection.uv2 = intersection.uv1; // @deprecated, r152
         }
         if (normal) {
             _normalA.fromBufferAttribute(normal, a);

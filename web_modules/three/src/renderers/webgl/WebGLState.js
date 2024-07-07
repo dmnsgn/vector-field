@@ -1,8 +1,11 @@
-import { LessEqualDepth, AddEquation, SubtractEquation, ReverseSubtractEquation, ZeroFactor, OneFactor, SrcColorFactor, SrcAlphaFactor, SrcAlphaSaturateFactor, DstColorFactor, DstAlphaFactor, OneMinusSrcColorFactor, OneMinusSrcAlphaFactor, OneMinusDstColorFactor, OneMinusDstAlphaFactor, NoBlending, CustomBlending, MultiplyBlending, SubtractiveBlending, AdditiveBlending, NormalBlending, CullFaceNone, CullFaceBack, CullFaceFront, MinEquation, MaxEquation, DoubleSide, BackSide, NotEqualDepth, GreaterDepth, GreaterEqualDepth, EqualDepth, LessDepth, AlwaysDepth, NeverDepth } from '../../constants.js';
+import { LessEqualDepth, AddEquation, SubtractEquation, ReverseSubtractEquation, ZeroFactor, OneFactor, SrcColorFactor, SrcAlphaFactor, SrcAlphaSaturateFactor, DstColorFactor, DstAlphaFactor, OneMinusSrcColorFactor, OneMinusSrcAlphaFactor, OneMinusDstColorFactor, OneMinusDstAlphaFactor, ConstantColorFactor, OneMinusConstantColorFactor, ConstantAlphaFactor, OneMinusConstantAlphaFactor, NoBlending, CustomBlending, MultiplyBlending, SubtractiveBlending, AdditiveBlending, NormalBlending, CullFaceNone, CullFaceBack, CullFaceFront, MinEquation, MaxEquation, DoubleSide, BackSide, NotEqualDepth, GreaterDepth, GreaterEqualDepth, EqualDepth, LessDepth, AlwaysDepth, NeverDepth } from '../../constants.js';
+import { Color } from '../../math/Color.js';
 import { Vector4 } from '../../math/Vector4.js';
+import '../../math/MathUtils.js';
+import '../../math/ColorManagement.js';
+import '../../math/Matrix3.js';
 
-function WebGLState(gl, extensions, capabilities) {
-    const isWebGL2 = capabilities.isWebGL2;
+function WebGLState(gl) {
     function ColorBuffer() {
         let locked = false;
         const color = new Vector4();
@@ -189,6 +192,8 @@ function WebGLState(gl, extensions, capabilities) {
     let currentBlendEquationAlpha = null;
     let currentBlendSrcAlpha = null;
     let currentBlendDstAlpha = null;
+    let currentBlendColor = new Color(0, 0, 0);
+    let currentBlendAlpha = 0;
     let currentPremultipledAlpha = false;
     let currentFlipSided = null;
     let currentCullFace = null;
@@ -219,7 +224,7 @@ function WebGLState(gl, extensions, capabilities) {
         gl.texParameteri(type, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(type, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         for(let i = 0; i < count; i++){
-            if (isWebGL2 && (type === gl.TEXTURE_3D || type === gl.TEXTURE_2D_ARRAY)) {
+            if (type === gl.TEXTURE_3D || type === gl.TEXTURE_2D_ARRAY) {
                 gl.texImage3D(target, 0, gl.RGBA, 1, 1, dimensions, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
             } else {
                 gl.texImage2D(target + i, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
@@ -230,10 +235,8 @@ function WebGLState(gl, extensions, capabilities) {
     const emptyTextures = {};
     emptyTextures[gl.TEXTURE_2D] = createTexture(gl.TEXTURE_2D, gl.TEXTURE_2D, 1);
     emptyTextures[gl.TEXTURE_CUBE_MAP] = createTexture(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_CUBE_MAP_POSITIVE_X, 6);
-    if (isWebGL2) {
-        emptyTextures[gl.TEXTURE_2D_ARRAY] = createTexture(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_2D_ARRAY, 1, 1);
-        emptyTextures[gl.TEXTURE_3D] = createTexture(gl.TEXTURE_3D, gl.TEXTURE_3D, 1, 1);
-    }
+    emptyTextures[gl.TEXTURE_2D_ARRAY] = createTexture(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_2D_ARRAY, 1, 1);
+    emptyTextures[gl.TEXTURE_3D] = createTexture(gl.TEXTURE_3D, gl.TEXTURE_3D, 1, 1);
     // init
     colorBuffer.setClear(0, 0, 0, 1);
     depthBuffer.setClear(1);
@@ -261,14 +264,12 @@ function WebGLState(gl, extensions, capabilities) {
         if (currentBoundFramebuffers[target] !== framebuffer) {
             gl.bindFramebuffer(target, framebuffer);
             currentBoundFramebuffers[target] = framebuffer;
-            if (isWebGL2) {
-                // gl.DRAW_FRAMEBUFFER is equivalent to gl.FRAMEBUFFER
-                if (target === gl.DRAW_FRAMEBUFFER) {
-                    currentBoundFramebuffers[gl.FRAMEBUFFER] = framebuffer;
-                }
-                if (target === gl.FRAMEBUFFER) {
-                    currentBoundFramebuffers[gl.DRAW_FRAMEBUFFER] = framebuffer;
-                }
+            // gl.DRAW_FRAMEBUFFER is equivalent to gl.FRAMEBUFFER
+            if (target === gl.DRAW_FRAMEBUFFER) {
+                currentBoundFramebuffers[gl.FRAMEBUFFER] = framebuffer;
+            }
+            if (target === gl.FRAMEBUFFER) {
+                currentBoundFramebuffers[gl.DRAW_FRAMEBUFFER] = framebuffer;
             }
             return true;
         }
@@ -283,20 +284,13 @@ function WebGLState(gl, extensions, capabilities) {
                 drawBuffers = [];
                 currentDrawbuffers.set(framebuffer, drawBuffers);
             }
-            if (renderTarget.isWebGLMultipleRenderTargets) {
-                const textures = renderTarget.texture;
-                if (drawBuffers.length !== textures.length || drawBuffers[0] !== gl.COLOR_ATTACHMENT0) {
-                    for(let i = 0, il = textures.length; i < il; i++){
-                        drawBuffers[i] = gl.COLOR_ATTACHMENT0 + i;
-                    }
-                    drawBuffers.length = textures.length;
-                    needsUpdate = true;
+            const textures = renderTarget.textures;
+            if (drawBuffers.length !== textures.length || drawBuffers[0] !== gl.COLOR_ATTACHMENT0) {
+                for(let i = 0, il = textures.length; i < il; i++){
+                    drawBuffers[i] = gl.COLOR_ATTACHMENT0 + i;
                 }
-            } else {
-                if (drawBuffers[0] !== gl.COLOR_ATTACHMENT0) {
-                    drawBuffers[0] = gl.COLOR_ATTACHMENT0;
-                    needsUpdate = true;
-                }
+                drawBuffers.length = textures.length;
+                needsUpdate = true;
             }
         } else {
             if (drawBuffers[0] !== gl.BACK) {
@@ -305,11 +299,7 @@ function WebGLState(gl, extensions, capabilities) {
             }
         }
         if (needsUpdate) {
-            if (capabilities.isWebGL2) {
-                gl.drawBuffers(drawBuffers);
-            } else {
-                extensions.get('WEBGL_draw_buffers').drawBuffersWEBGL(drawBuffers);
-            }
+            gl.drawBuffers(drawBuffers);
         }
     }
     function useProgram(program) {
@@ -325,16 +315,8 @@ function WebGLState(gl, extensions, capabilities) {
         [SubtractEquation]: gl.FUNC_SUBTRACT,
         [ReverseSubtractEquation]: gl.FUNC_REVERSE_SUBTRACT
     };
-    if (isWebGL2) {
-        equationToGL[MinEquation] = gl.MIN;
-        equationToGL[MaxEquation] = gl.MAX;
-    } else {
-        const extension = extensions.get('EXT_blend_minmax');
-        if (extension !== null) {
-            equationToGL[MinEquation] = extension.MIN_EXT;
-            equationToGL[MaxEquation] = extension.MAX_EXT;
-        }
-    }
+    equationToGL[MinEquation] = gl.MIN;
+    equationToGL[MaxEquation] = gl.MAX;
     const factorToGL = {
         [ZeroFactor]: gl.ZERO,
         [OneFactor]: gl.ONE,
@@ -346,9 +328,13 @@ function WebGLState(gl, extensions, capabilities) {
         [OneMinusSrcColorFactor]: gl.ONE_MINUS_SRC_COLOR,
         [OneMinusSrcAlphaFactor]: gl.ONE_MINUS_SRC_ALPHA,
         [OneMinusDstColorFactor]: gl.ONE_MINUS_DST_COLOR,
-        [OneMinusDstAlphaFactor]: gl.ONE_MINUS_DST_ALPHA
+        [OneMinusDstAlphaFactor]: gl.ONE_MINUS_DST_ALPHA,
+        [ConstantColorFactor]: gl.CONSTANT_COLOR,
+        [OneMinusConstantColorFactor]: gl.ONE_MINUS_CONSTANT_COLOR,
+        [ConstantAlphaFactor]: gl.CONSTANT_ALPHA,
+        [OneMinusConstantAlphaFactor]: gl.ONE_MINUS_CONSTANT_ALPHA
     };
-    function setBlending(blending, blendEquation, blendSrc, blendDst, blendEquationAlpha, blendSrcAlpha, blendDstAlpha, premultipliedAlpha) {
+    function setBlending(blending, blendEquation, blendSrc, blendDst, blendEquationAlpha, blendSrcAlpha, blendDstAlpha, blendColor, blendAlpha, premultipliedAlpha) {
         if (blending === NoBlending) {
             if (currentBlendingEnabled === true) {
                 disable(gl.BLEND);
@@ -408,6 +394,8 @@ function WebGLState(gl, extensions, capabilities) {
                 currentBlendDst = null;
                 currentBlendSrcAlpha = null;
                 currentBlendDstAlpha = null;
+                currentBlendColor.set(0, 0, 0);
+                currentBlendAlpha = 0;
                 currentBlending = blending;
                 currentPremultipledAlpha = premultipliedAlpha;
             }
@@ -429,6 +417,11 @@ function WebGLState(gl, extensions, capabilities) {
             currentBlendSrcAlpha = blendSrcAlpha;
             currentBlendDstAlpha = blendDstAlpha;
         }
+        if (blendColor.equals(currentBlendColor) === false || blendAlpha !== currentBlendAlpha) {
+            gl.blendColor(blendColor.r, blendColor.g, blendColor.b, blendAlpha);
+            currentBlendColor.copy(blendColor);
+            currentBlendAlpha = blendAlpha;
+        }
         currentBlending = blending;
         currentPremultipledAlpha = false;
     }
@@ -437,7 +430,7 @@ function WebGLState(gl, extensions, capabilities) {
         let flipSided = material.side === BackSide;
         if (frontFaceCW) flipSided = !flipSided;
         setFlipSided(flipSided);
-        material.blending === NormalBlending && material.transparent === false ? setBlending(NoBlending) : setBlending(material.blending, material.blendEquation, material.blendSrc, material.blendDst, material.blendEquationAlpha, material.blendSrcAlpha, material.blendDstAlpha, material.premultipliedAlpha);
+        material.blending === NormalBlending && material.transparent === false ? setBlending(NoBlending) : setBlending(material.blending, material.blendEquation, material.blendSrc, material.blendDst, material.blendEquationAlpha, material.blendSrcAlpha, material.blendDstAlpha, material.blendColor, material.blendAlpha, material.premultipliedAlpha);
         depthBuffer.setFunc(material.depthFunc);
         depthBuffer.setTest(material.depthTest);
         depthBuffer.setMask(material.depthWrite);
@@ -664,6 +657,7 @@ function WebGLState(gl, extensions, capabilities) {
         gl.blendEquation(gl.FUNC_ADD);
         gl.blendFunc(gl.ONE, gl.ZERO);
         gl.blendFuncSeparate(gl.ONE, gl.ZERO, gl.ONE, gl.ZERO);
+        gl.blendColor(0, 0, 0, 0);
         gl.colorMask(true, true, true, true);
         gl.clearColor(0, 0, 0, 0);
         gl.depthMask(true);
@@ -678,10 +672,8 @@ function WebGLState(gl, extensions, capabilities) {
         gl.polygonOffset(0, 0);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        if (isWebGL2 === true) {
-            gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
-            gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
-        }
+        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
         gl.useProgram(null);
         gl.lineWidth(1);
         gl.scissor(0, 0, gl.canvas.width, gl.canvas.height);
@@ -702,6 +694,8 @@ function WebGLState(gl, extensions, capabilities) {
         currentBlendEquationAlpha = null;
         currentBlendSrcAlpha = null;
         currentBlendDstAlpha = null;
+        currentBlendColor = new Color(0, 0, 0);
+        currentBlendAlpha = 0;
         currentPremultipledAlpha = false;
         currentFlipSided = null;
         currentCullFace = null;

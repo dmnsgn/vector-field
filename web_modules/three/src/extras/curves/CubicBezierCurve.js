@@ -8,6 +8,15 @@ import '../../math/Matrix4.js';
 import '../../constants.js';
 
 class CubicBezierCurve extends Curve {
+    constructor(v0 = new Vector2(), v1 = new Vector2(), v2 = new Vector2(), v3 = new Vector2()){
+        super();
+        this.isCubicBezierCurve = true;
+        this.type = 'CubicBezierCurve';
+        this.v0 = v0;
+        this.v1 = v1;
+        this.v2 = v2;
+        this.v3 = v3;
+    }
     getPoint(t, optionalTarget) {
         if (optionalTarget === void 0) optionalTarget = new Vector2();
         const point = optionalTarget;
@@ -38,15 +47,6 @@ class CubicBezierCurve extends Curve {
         this.v2.fromArray(json.v2);
         this.v3.fromArray(json.v3);
         return this;
-    }
-    constructor(v0 = new Vector2(), v1 = new Vector2(), v2 = new Vector2(), v3 = new Vector2()){
-        super();
-        this.isCubicBezierCurve = true;
-        this.type = 'CubicBezierCurve';
-        this.v0 = v0;
-        this.v1 = v1;
-        this.v2 = v2;
-        this.v3 = v3;
     }
 }
 

@@ -25,6 +25,11 @@ const _supportedObjectNames = [
     'map'
 ];
 class Composite {
+    constructor(targetGroup, path, optionalParsedPath){
+        const parsedPath = optionalParsedPath || PropertyBinding.parseTrackName(path);
+        this._targetGroup = targetGroup;
+        this._bindings = targetGroup.subscribe_(path, parsedPath);
+    }
     getValue(array, offset) {
         this.bind(); // bind all binding
         const firstValidIndex = this._targetGroup.nCachedObjects_, binding = this._bindings[firstValidIndex];
@@ -49,11 +54,6 @@ class Composite {
             bindings[i].unbind();
         }
     }
-    constructor(targetGroup, path, optionalParsedPath){
-        const parsedPath = optionalParsedPath || PropertyBinding.parseTrackName(path);
-        this._targetGroup = targetGroup;
-        this._bindings = targetGroup.subscribe_(path, parsedPath);
-    }
 }
 // Note: This class uses a State pattern on a per-method basis:
 // 'bind' sets 'this.getValue' / 'setValue' and shadows the
@@ -61,6 +61,15 @@ class Composite {
 // the bound state. When the property is not found, the methods
 // become no-ops.
 class PropertyBinding {
+    constructor(rootNode, path, parsedPath){
+        this.path = path;
+        this.parsedPath = parsedPath || PropertyBinding.parseTrackName(path);
+        this.node = PropertyBinding.findNode(rootNode, this.parsedPath.nodeName);
+        this.rootNode = rootNode;
+        // initial state of these methods that calls 'bind'
+        this.getValue = this._getValue_unbound;
+        this.setValue = this._setValue_unbound;
+    }
     static create(root, path, parsedPath) {
         if (!(root && root.isAnimationObjectGroup)) {
             return new PropertyBinding(root, path, parsedPath);
@@ -357,15 +366,6 @@ class PropertyBinding {
         this.node = null;
         // back to the prototype version of getValue / setValue
         // note: avoiding to mutate the shape of 'this' via 'delete'
-        this.getValue = this._getValue_unbound;
-        this.setValue = this._setValue_unbound;
-    }
-    constructor(rootNode, path, parsedPath){
-        this.path = path;
-        this.parsedPath = parsedPath || PropertyBinding.parseTrackName(path);
-        this.node = PropertyBinding.findNode(rootNode, this.parsedPath.nodeName);
-        this.rootNode = rootNode;
-        // initial state of these methods that calls 'bind'
         this.getValue = this._getValue_unbound;
         this.setValue = this._setValue_unbound;
     }

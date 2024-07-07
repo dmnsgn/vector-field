@@ -1,4 +1,14 @@
 class GLBufferAttribute {
+    constructor(buffer, type, itemSize, elementSize, count){
+        this.isGLBufferAttribute = true;
+        this.name = '';
+        this.buffer = buffer;
+        this.type = type;
+        this.itemSize = itemSize;
+        this.elementSize = elementSize;
+        this.count = count;
+        this.version = 0;
+    }
     set needsUpdate(value) {
         if (value === true) this.version++;
     }
@@ -18,16 +28,6 @@ class GLBufferAttribute {
     setCount(count) {
         this.count = count;
         return this;
-    }
-    constructor(buffer, type, itemSize, elementSize, count){
-        this.isGLBufferAttribute = true;
-        this.name = '';
-        this.buffer = buffer;
-        this.type = type;
-        this.itemSize = itemSize;
-        this.elementSize = elementSize;
-        this.count = count;
-        this.version = 0;
     }
 }
 

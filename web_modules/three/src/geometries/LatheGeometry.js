@@ -5,8 +5,9 @@ import { Vector2 } from '../math/Vector2.js';
 import { clamp } from '../math/MathUtils.js';
 import '../constants.js';
 import '../extras/DataUtils.js';
-import '../math/Box3.js';
+import '../utils.js';
 import '../math/Quaternion.js';
+import '../math/Box3.js';
 import '../core/EventDispatcher.js';
 import '../math/Sphere.js';
 import '../core/Object3D.js';
@@ -14,17 +15,8 @@ import '../math/Matrix4.js';
 import '../math/Euler.js';
 import '../core/Layers.js';
 import '../math/Matrix3.js';
-import '../utils.js';
 
 class LatheGeometry extends BufferGeometry {
-    copy(source) {
-        super.copy(source);
-        this.parameters = Object.assign({}, source.parameters);
-        return this;
-    }
-    static fromJSON(data) {
-        return new LatheGeometry(data.points, data.segments, data.phiStart, data.phiLength);
-    }
     constructor(points = [
         new Vector2(0, -0.5),
         new Vector2(0.5, 0),
@@ -127,6 +119,14 @@ class LatheGeometry extends BufferGeometry {
         this.setAttribute('position', new Float32BufferAttribute(vertices, 3));
         this.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
         this.setAttribute('normal', new Float32BufferAttribute(normals, 3));
+    }
+    copy(source) {
+        super.copy(source);
+        this.parameters = Object.assign({}, source.parameters);
+        return this;
+    }
+    static fromJSON(data) {
+        return new LatheGeometry(data.points, data.segments, data.phiStart, data.phiLength);
     }
 }
 

@@ -7,12 +7,6 @@ import '../math/ColorManagement.js';
 import '../math/Matrix3.js';
 
 class ShadowMaterial extends Material {
-    copy(source) {
-        super.copy(source);
-        this.color.copy(source.color);
-        this.fog = source.fog;
-        return this;
-    }
     constructor(parameters){
         super();
         this.isShadowMaterial = true;
@@ -21,6 +15,12 @@ class ShadowMaterial extends Material {
         this.transparent = true;
         this.fog = true;
         this.setValues(parameters);
+    }
+    copy(source) {
+        super.copy(source);
+        this.color.copy(source.color);
+        this.fog = source.fog;
+        return this;
     }
 }
 

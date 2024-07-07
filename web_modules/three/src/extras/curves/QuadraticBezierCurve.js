@@ -8,6 +8,14 @@ import '../../math/Matrix4.js';
 import '../../constants.js';
 
 class QuadraticBezierCurve extends Curve {
+    constructor(v0 = new Vector2(), v1 = new Vector2(), v2 = new Vector2()){
+        super();
+        this.isQuadraticBezierCurve = true;
+        this.type = 'QuadraticBezierCurve';
+        this.v0 = v0;
+        this.v1 = v1;
+        this.v2 = v2;
+    }
     getPoint(t, optionalTarget) {
         if (optionalTarget === void 0) optionalTarget = new Vector2();
         const point = optionalTarget;
@@ -35,14 +43,6 @@ class QuadraticBezierCurve extends Curve {
         this.v1.fromArray(json.v1);
         this.v2.fromArray(json.v2);
         return this;
-    }
-    constructor(v0 = new Vector2(), v1 = new Vector2(), v2 = new Vector2()){
-        super();
-        this.isQuadraticBezierCurve = true;
-        this.type = 'QuadraticBezierCurve';
-        this.v0 = v0;
-        this.v1 = v1;
-        this.v2 = v2;
     }
 }
 

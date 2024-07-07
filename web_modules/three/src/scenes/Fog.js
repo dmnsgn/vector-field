@@ -5,6 +5,13 @@ import '../constants.js';
 import '../math/Matrix3.js';
 
 class Fog {
+    constructor(color, near = 1, far = 1000){
+        this.isFog = true;
+        this.name = '';
+        this.color = new Color(color);
+        this.near = near;
+        this.far = far;
+    }
     clone() {
         return new Fog(this.color, this.near, this.far);
     }
@@ -16,13 +23,6 @@ class Fog {
             near: this.near,
             far: this.far
         };
-    }
-    constructor(color, near = 1, far = 1000){
-        this.isFog = true;
-        this.name = '';
-        this.color = new Color(color);
-        this.near = near;
-        this.far = far;
     }
 }
 

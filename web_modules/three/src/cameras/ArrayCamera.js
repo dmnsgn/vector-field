@@ -10,6 +10,7 @@ import '../core/EventDispatcher.js';
 import '../math/Euler.js';
 import '../core/Layers.js';
 import '../math/Matrix3.js';
+import '../math/Vector2.js';
 
 class ArrayCamera extends PerspectiveCamera {
     constructor(array = []){

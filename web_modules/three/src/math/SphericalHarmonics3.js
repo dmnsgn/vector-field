@@ -10,6 +10,13 @@ import './Quaternion.js';
  *   https://www.ppsloan.org/publications/StupidSH36.pdf
  */ // 3-band SH defined by 9 coefficients
 class SphericalHarmonics3 {
+    constructor(){
+        this.isSphericalHarmonics3 = true;
+        this.coefficients = [];
+        for(let i = 0; i < 9; i++){
+            this.coefficients.push(new Vector3());
+        }
+    }
     set(coefficients) {
         for(let i = 0; i < 9; i++){
             this.coefficients[i].copy(coefficients[i]);
@@ -135,13 +142,6 @@ class SphericalHarmonics3 {
         shBasis[6] = 0.315392 * (3 * z * z - 1);
         shBasis[7] = 1.092548 * x * z;
         shBasis[8] = 0.546274 * (x * x - y * y);
-    }
-    constructor(){
-        this.isSphericalHarmonics3 = true;
-        this.coefficients = [];
-        for(let i = 0; i < 9; i++){
-            this.coefficients.push(new Vector3());
-        }
     }
 }
 

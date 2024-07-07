@@ -14,6 +14,11 @@ const _moveEvent = {
     type: 'move'
 };
 class WebXRController {
+    constructor(){
+        this._targetRay = null;
+        this._grip = null;
+        this._hand = null;
+    }
     getHandSpace() {
         if (this._hand === null) {
             this._hand = new Group();
@@ -208,11 +213,6 @@ class WebXRController {
             hand.add(joint);
         }
         return hand.joints[inputjoint.jointName];
-    }
-    constructor(){
-        this._targetRay = null;
-        this._grip = null;
-        this._hand = null;
     }
 }
 

@@ -1,5 +1,4 @@
-function WebGLIndexedBufferRenderer(gl, extensions, info, capabilities) {
-    const isWebGL2 = capabilities.isWebGL2;
+function WebGLIndexedBufferRenderer(gl, extensions, info) {
     let mode;
     function setMode(value) {
         mode = value;
@@ -15,26 +14,44 @@ function WebGLIndexedBufferRenderer(gl, extensions, info, capabilities) {
     }
     function renderInstances(start, count, primcount) {
         if (primcount === 0) return;
-        let extension, methodName;
-        if (isWebGL2) {
-            extension = gl;
-            methodName = 'drawElementsInstanced';
+        gl.drawElementsInstanced(mode, count, type, start * bytesPerElement, primcount);
+        info.update(count, mode, primcount);
+    }
+    function renderMultiDraw(starts, counts, drawCount) {
+        if (drawCount === 0) return;
+        const extension = extensions.get('WEBGL_multi_draw');
+        extension.multiDrawElementsWEBGL(mode, counts, 0, type, starts, 0, drawCount);
+        let elementCount = 0;
+        for(let i = 0; i < drawCount; i++){
+            elementCount += counts[i];
+        }
+        info.update(elementCount, mode, 1);
+    }
+    function renderMultiDrawInstances(starts, counts, drawCount, primcount) {
+        if (drawCount === 0) return;
+        const extension = extensions.get('WEBGL_multi_draw');
+        if (extension === null) {
+            for(let i = 0; i < starts.length; i++){
+                renderInstances(starts[i] / bytesPerElement, counts[i], primcount[i]);
+            }
         } else {
-            extension = extensions.get('ANGLE_instanced_arrays');
-            methodName = 'drawElementsInstancedANGLE';
-            if (extension === null) {
-                console.error('THREE.WebGLIndexedBufferRenderer: using THREE.InstancedBufferGeometry but hardware does not support extension ANGLE_instanced_arrays.');
-                return;
+            extension.multiDrawElementsInstancedWEBGL(mode, counts, 0, type, starts, 0, primcount, 0, drawCount);
+            let elementCount = 0;
+            for(let i = 0; i < drawCount; i++){
+                elementCount += counts[i];
+            }
+            for(let i = 0; i < primcount.length; i++){
+                info.update(elementCount, mode, primcount[i]);
             }
         }
-        extension[methodName](mode, count, type, start * bytesPerElement, primcount);
-        info.update(count, mode, primcount);
     }
     //
     this.setMode = setMode;
     this.setIndex = setIndex;
     this.render = render;
     this.renderInstances = renderInstances;
+    this.renderMultiDraw = renderMultiDraw;
+    this.renderMultiDrawInstances = renderMultiDrawInstances;
 }
 
 export { WebGLIndexedBufferRenderer };

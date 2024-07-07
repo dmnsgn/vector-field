@@ -17,14 +17,6 @@ import '../utils.js';
 import '../extras/DataUtils.js';
 
 class CircleGeometry extends BufferGeometry {
-    copy(source) {
-        super.copy(source);
-        this.parameters = Object.assign({}, source.parameters);
-        return this;
-    }
-    static fromJSON(data) {
-        return new CircleGeometry(data.radius, data.segments, data.thetaStart, data.thetaLength);
-    }
     constructor(radius = 1, segments = 32, thetaStart = 0, thetaLength = Math.PI * 2){
         super();
         this.type = 'CircleGeometry';
@@ -69,6 +61,14 @@ class CircleGeometry extends BufferGeometry {
         this.setAttribute('position', new Float32BufferAttribute(vertices, 3));
         this.setAttribute('normal', new Float32BufferAttribute(normals, 3));
         this.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
+    }
+    copy(source) {
+        super.copy(source);
+        this.parameters = Object.assign({}, source.parameters);
+        return this;
+    }
+    static fromJSON(data) {
+        return new CircleGeometry(data.radius, data.segments, data.thetaStart, data.thetaLength);
     }
 }
 

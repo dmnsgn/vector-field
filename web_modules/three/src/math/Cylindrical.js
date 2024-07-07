@@ -1,6 +1,12 @@
 /**
  * Ref: https://en.wikipedia.org/wiki/Cylindrical_coordinate_system
  */ class Cylindrical {
+    constructor(radius = 1, theta = 0, y = 0){
+        this.radius = radius; // distance from the origin to a point in the x-z plane
+        this.theta = theta; // counterclockwise angle in the x-z plane measured in radians from the positive z-axis
+        this.y = y; // height above the x-z plane
+        return this;
+    }
     set(radius, theta, y) {
         this.radius = radius;
         this.theta = theta;
@@ -24,12 +30,6 @@
     }
     clone() {
         return new this.constructor().copy(this);
-    }
-    constructor(radius = 1, theta = 0, y = 0){
-        this.radius = radius; // distance from the origin to a point in the x-z plane
-        this.theta = theta; // counterclockwise angle in the x-z plane measured in radians from the positive z-axis
-        this.y = y; // height above the x-z plane
-        return this;
     }
 }
 

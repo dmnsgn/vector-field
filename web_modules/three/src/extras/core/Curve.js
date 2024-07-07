@@ -34,6 +34,10 @@ import '../../constants.js';
  * A series of curves can be represented as a THREE.CurvePath.
  *
  **/ class Curve {
+    constructor(){
+        this.type = 'Curve';
+        this.arcLengthDivisions = 200;
+    }
     // Virtual base class method to overwrite and implement in subclasses
     //	- t [0 .. 1]
     getPoint() {
@@ -242,10 +246,6 @@ import '../../constants.js';
     fromJSON(json) {
         this.arcLengthDivisions = json.arcLengthDivisions;
         return this;
-    }
-    constructor(){
-        this.type = 'Curve';
-        this.arcLengthDivisions = 200;
     }
 }
 

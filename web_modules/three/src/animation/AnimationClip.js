@@ -16,6 +16,17 @@ import '../math/interpolants/DiscreteInterpolant.js';
 import '../math/interpolants/QuaternionLinearInterpolant.js';
 
 class AnimationClip {
+    constructor(name = '', duration = -1, tracks = [], blendMode = NormalAnimationBlendMode){
+        this.name = name;
+        this.tracks = tracks;
+        this.duration = duration;
+        this.blendMode = blendMode;
+        this.uuid = generateUUID();
+        // this means it should figure out its duration by scanning the tracks
+        if (this.duration < 0) {
+            this.resetDuration();
+        }
+    }
     static parse(json) {
         const tracks = [], jsonTracks = json.tracks, frameTime = 1.0 / (json.fps || 1.0);
         for(let i = 0, n = jsonTracks.length; i !== n; ++i){
@@ -205,17 +216,6 @@ class AnimationClip {
     }
     toJSON() {
         return this.constructor.toJSON(this);
-    }
-    constructor(name, duration = -1, tracks, blendMode = NormalAnimationBlendMode){
-        this.name = name;
-        this.tracks = tracks;
-        this.duration = duration;
-        this.blendMode = blendMode;
-        this.uuid = generateUUID();
-        // this means it should figure out its duration by scanning the tracks
-        if (this.duration < 0) {
-            this.resetDuration();
-        }
     }
 }
 function getTrackTypeForValueTypeName(typeName) {

@@ -6,6 +6,7 @@ import '../../math/MathUtils.js';
 import '../../math/Quaternion.js';
 import '../../math/Vector2.js';
 import '../../extras/DataUtils.js';
+import '../../utils.js';
 import '../../core/BufferGeometry.js';
 import '../../math/Box3.js';
 import '../../core/EventDispatcher.js';
@@ -15,7 +16,6 @@ import '../../math/Matrix4.js';
 import '../../math/Euler.js';
 import '../../core/Layers.js';
 import '../../math/Matrix3.js';
-import '../../utils.js';
 import '../../objects/Mesh.js';
 import '../../math/Ray.js';
 import '../../math/Triangle.js';
@@ -48,21 +48,23 @@ function WebGLCubeUVMaps(renderer) {
             const isCubeMap = mapping === CubeReflectionMapping || mapping === CubeRefractionMapping;
             // equirect/cube map to cubeUV conversion
             if (isEquirectMap || isCubeMap) {
-                if (texture.isRenderTargetTexture && texture.needsPMREMUpdate === true) {
-                    texture.needsPMREMUpdate = false;
-                    let renderTarget = cubeUVmaps.get(texture);
+                let renderTarget = cubeUVmaps.get(texture);
+                const currentPMREMVersion = renderTarget !== undefined ? renderTarget.texture.pmremVersion : 0;
+                if (texture.isRenderTargetTexture && texture.pmremVersion !== currentPMREMVersion) {
                     if (pmremGenerator === null) pmremGenerator = new PMREMGenerator(renderer);
                     renderTarget = isEquirectMap ? pmremGenerator.fromEquirectangular(texture, renderTarget) : pmremGenerator.fromCubemap(texture, renderTarget);
+                    renderTarget.texture.pmremVersion = texture.pmremVersion;
                     cubeUVmaps.set(texture, renderTarget);
                     return renderTarget.texture;
                 } else {
-                    if (cubeUVmaps.has(texture)) {
-                        return cubeUVmaps.get(texture).texture;
+                    if (renderTarget !== undefined) {
+                        return renderTarget.texture;
                     } else {
                         const image = texture.image;
                         if (isEquirectMap && image && image.height > 0 || isCubeMap && image && isCubeTextureComplete(image)) {
                             if (pmremGenerator === null) pmremGenerator = new PMREMGenerator(renderer);
-                            const renderTarget = isEquirectMap ? pmremGenerator.fromEquirectangular(texture) : pmremGenerator.fromCubemap(texture);
+                            renderTarget = isEquirectMap ? pmremGenerator.fromEquirectangular(texture) : pmremGenerator.fromCubemap(texture);
+                            renderTarget.texture.pmremVersion = texture.pmremVersion;
                             cubeUVmaps.set(texture, renderTarget);
                             texture.addEventListener('dispose', onTextureDispose);
                             return renderTarget.texture;

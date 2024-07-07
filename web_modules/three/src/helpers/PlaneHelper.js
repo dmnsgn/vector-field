@@ -26,19 +26,6 @@ import '../extras/DataUtils.js';
 import '../math/Triangle.js';
 
 class PlaneHelper extends Line {
-    updateMatrixWorld(force) {
-        this.position.set(0, 0, 0);
-        this.scale.set(0.5 * this.size, 0.5 * this.size, 1);
-        this.lookAt(this.plane.normal);
-        this.translateZ(-this.plane.constant);
-        super.updateMatrixWorld(force);
-    }
-    dispose() {
-        this.geometry.dispose();
-        this.material.dispose();
-        this.children[0].geometry.dispose();
-        this.children[0].material.dispose();
-    }
     constructor(plane, size = 1, hex = 0xffff00){
         const color = hex;
         const positions = [
@@ -107,6 +94,19 @@ class PlaneHelper extends Line {
             depthWrite: false,
             toneMapped: false
         })));
+    }
+    updateMatrixWorld(force) {
+        this.position.set(0, 0, 0);
+        this.scale.set(0.5 * this.size, 0.5 * this.size, 1);
+        this.lookAt(this.plane.normal);
+        this.translateZ(-this.plane.constant);
+        super.updateMatrixWorld(force);
+    }
+    dispose() {
+        this.geometry.dispose();
+        this.material.dispose();
+        this.children[0].geometry.dispose();
+        this.children[0].material.dispose();
     }
 }
 

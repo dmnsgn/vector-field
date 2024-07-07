@@ -8,6 +8,12 @@ import '../../math/Matrix4.js';
 import '../../constants.js';
 
 class SplineCurve extends Curve {
+    constructor(points = []){
+        super();
+        this.isSplineCurve = true;
+        this.type = 'SplineCurve';
+        this.points = points;
+    }
     getPoint(t, optionalTarget) {
         if (optionalTarget === void 0) optionalTarget = new Vector2();
         const point = optionalTarget;
@@ -48,12 +54,6 @@ class SplineCurve extends Curve {
             this.points.push(new Vector2().fromArray(point));
         }
         return this;
-    }
-    constructor(points = []){
-        super();
-        this.isSplineCurve = true;
-        this.type = 'SplineCurve';
-        this.points = points;
     }
 }
 

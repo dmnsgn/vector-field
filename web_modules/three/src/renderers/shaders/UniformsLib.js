@@ -43,6 +43,9 @@ import '../../constants.js';
         envMap: {
             value: null
         },
+        envMapRotation: {
+            value: /*@__PURE__*/ new Matrix3()
+        },
         flipEnvMap: {
             value: -1
         },
@@ -174,6 +177,7 @@ import '../../constants.js';
         directionalLightShadows: {
             value: [],
             properties: {
+                shadowIntensity: 1,
                 shadowBias: {},
                 shadowNormalBias: {},
                 shadowRadius: {},
@@ -201,6 +205,7 @@ import '../../constants.js';
         spotLightShadows: {
             value: [],
             properties: {
+                shadowIntensity: 1,
                 shadowBias: {},
                 shadowNormalBias: {},
                 shadowRadius: {},
@@ -228,6 +233,7 @@ import '../../constants.js';
         pointLightShadows: {
             value: [],
             properties: {
+                shadowIntensity: 1,
                 shadowBias: {},
                 shadowNormalBias: {},
                 shadowRadius: {},

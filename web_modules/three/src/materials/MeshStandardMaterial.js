@@ -2,49 +2,16 @@ import { TangentSpaceNormalMap } from '../constants.js';
 import { Material } from './Material.js';
 import { Vector2 } from '../math/Vector2.js';
 import { Color } from '../math/Color.js';
+import { Euler } from '../math/Euler.js';
 import '../core/EventDispatcher.js';
 import '../math/MathUtils.js';
 import '../math/ColorManagement.js';
 import '../math/Matrix3.js';
+import '../math/Quaternion.js';
+import '../math/Matrix4.js';
+import '../math/Vector3.js';
 
 class MeshStandardMaterial extends Material {
-    copy(source) {
-        super.copy(source);
-        this.defines = {
-            'STANDARD': ''
-        };
-        this.color.copy(source.color);
-        this.roughness = source.roughness;
-        this.metalness = source.metalness;
-        this.map = source.map;
-        this.lightMap = source.lightMap;
-        this.lightMapIntensity = source.lightMapIntensity;
-        this.aoMap = source.aoMap;
-        this.aoMapIntensity = source.aoMapIntensity;
-        this.emissive.copy(source.emissive);
-        this.emissiveMap = source.emissiveMap;
-        this.emissiveIntensity = source.emissiveIntensity;
-        this.bumpMap = source.bumpMap;
-        this.bumpScale = source.bumpScale;
-        this.normalMap = source.normalMap;
-        this.normalMapType = source.normalMapType;
-        this.normalScale.copy(source.normalScale);
-        this.displacementMap = source.displacementMap;
-        this.displacementScale = source.displacementScale;
-        this.displacementBias = source.displacementBias;
-        this.roughnessMap = source.roughnessMap;
-        this.metalnessMap = source.metalnessMap;
-        this.alphaMap = source.alphaMap;
-        this.envMap = source.envMap;
-        this.envMapIntensity = source.envMapIntensity;
-        this.wireframe = source.wireframe;
-        this.wireframeLinewidth = source.wireframeLinewidth;
-        this.wireframeLinecap = source.wireframeLinecap;
-        this.wireframeLinejoin = source.wireframeLinejoin;
-        this.flatShading = source.flatShading;
-        this.fog = source.fog;
-        return this;
-    }
     constructor(parameters){
         super();
         this.isMeshStandardMaterial = true;
@@ -75,6 +42,7 @@ class MeshStandardMaterial extends Material {
         this.metalnessMap = null;
         this.alphaMap = null;
         this.envMap = null;
+        this.envMapRotation = new Euler();
         this.envMapIntensity = 1.0;
         this.wireframe = false;
         this.wireframeLinewidth = 1;
@@ -83,6 +51,44 @@ class MeshStandardMaterial extends Material {
         this.flatShading = false;
         this.fog = true;
         this.setValues(parameters);
+    }
+    copy(source) {
+        super.copy(source);
+        this.defines = {
+            'STANDARD': ''
+        };
+        this.color.copy(source.color);
+        this.roughness = source.roughness;
+        this.metalness = source.metalness;
+        this.map = source.map;
+        this.lightMap = source.lightMap;
+        this.lightMapIntensity = source.lightMapIntensity;
+        this.aoMap = source.aoMap;
+        this.aoMapIntensity = source.aoMapIntensity;
+        this.emissive.copy(source.emissive);
+        this.emissiveMap = source.emissiveMap;
+        this.emissiveIntensity = source.emissiveIntensity;
+        this.bumpMap = source.bumpMap;
+        this.bumpScale = source.bumpScale;
+        this.normalMap = source.normalMap;
+        this.normalMapType = source.normalMapType;
+        this.normalScale.copy(source.normalScale);
+        this.displacementMap = source.displacementMap;
+        this.displacementScale = source.displacementScale;
+        this.displacementBias = source.displacementBias;
+        this.roughnessMap = source.roughnessMap;
+        this.metalnessMap = source.metalnessMap;
+        this.alphaMap = source.alphaMap;
+        this.envMap = source.envMap;
+        this.envMapRotation.copy(source.envMapRotation);
+        this.envMapIntensity = source.envMapIntensity;
+        this.wireframe = source.wireframe;
+        this.wireframeLinewidth = source.wireframeLinewidth;
+        this.wireframeLinecap = source.wireframeLinecap;
+        this.wireframeLinejoin = source.wireframeLinejoin;
+        this.flatShading = source.flatShading;
+        this.fog = source.fog;
+        return this;
     }
 }
 

@@ -8,34 +8,6 @@ import '../math/ColorManagement.js';
 import '../math/Matrix3.js';
 
 class MeshToonMaterial extends Material {
-    copy(source) {
-        super.copy(source);
-        this.color.copy(source.color);
-        this.map = source.map;
-        this.gradientMap = source.gradientMap;
-        this.lightMap = source.lightMap;
-        this.lightMapIntensity = source.lightMapIntensity;
-        this.aoMap = source.aoMap;
-        this.aoMapIntensity = source.aoMapIntensity;
-        this.emissive.copy(source.emissive);
-        this.emissiveMap = source.emissiveMap;
-        this.emissiveIntensity = source.emissiveIntensity;
-        this.bumpMap = source.bumpMap;
-        this.bumpScale = source.bumpScale;
-        this.normalMap = source.normalMap;
-        this.normalMapType = source.normalMapType;
-        this.normalScale.copy(source.normalScale);
-        this.displacementMap = source.displacementMap;
-        this.displacementScale = source.displacementScale;
-        this.displacementBias = source.displacementBias;
-        this.alphaMap = source.alphaMap;
-        this.wireframe = source.wireframe;
-        this.wireframeLinewidth = source.wireframeLinewidth;
-        this.wireframeLinecap = source.wireframeLinecap;
-        this.wireframeLinejoin = source.wireframeLinejoin;
-        this.fog = source.fog;
-        return this;
-    }
     constructor(parameters){
         super();
         this.isMeshToonMaterial = true;
@@ -68,6 +40,34 @@ class MeshToonMaterial extends Material {
         this.wireframeLinejoin = 'round';
         this.fog = true;
         this.setValues(parameters);
+    }
+    copy(source) {
+        super.copy(source);
+        this.color.copy(source.color);
+        this.map = source.map;
+        this.gradientMap = source.gradientMap;
+        this.lightMap = source.lightMap;
+        this.lightMapIntensity = source.lightMapIntensity;
+        this.aoMap = source.aoMap;
+        this.aoMapIntensity = source.aoMapIntensity;
+        this.emissive.copy(source.emissive);
+        this.emissiveMap = source.emissiveMap;
+        this.emissiveIntensity = source.emissiveIntensity;
+        this.bumpMap = source.bumpMap;
+        this.bumpScale = source.bumpScale;
+        this.normalMap = source.normalMap;
+        this.normalMapType = source.normalMapType;
+        this.normalScale.copy(source.normalScale);
+        this.displacementMap = source.displacementMap;
+        this.displacementScale = source.displacementScale;
+        this.displacementBias = source.displacementBias;
+        this.alphaMap = source.alphaMap;
+        this.wireframe = source.wireframe;
+        this.wireframeLinewidth = source.wireframeLinewidth;
+        this.wireframeLinecap = source.wireframeLinecap;
+        this.wireframeLinejoin = source.wireframeLinejoin;
+        this.fog = source.fog;
+        return this;
     }
 }
 

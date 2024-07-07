@@ -13,11 +13,6 @@ import '../math/Matrix3.js';
 import '../math/ColorManagement.js';
 
 class HemisphereLight extends Light {
-    copy(source, recursive) {
-        super.copy(source, recursive);
-        this.groundColor.copy(source.groundColor);
-        return this;
-    }
     constructor(skyColor, groundColor, intensity){
         super(skyColor, intensity);
         this.isHemisphereLight = true;
@@ -25,6 +20,11 @@ class HemisphereLight extends Light {
         this.position.copy(Object3D.DEFAULT_UP);
         this.updateMatrix();
         this.groundColor = new Color(groundColor);
+    }
+    copy(source, recursive) {
+        super.copy(source, recursive);
+        this.groundColor.copy(source.groundColor);
+        return this;
     }
 }
 

@@ -10,6 +10,9 @@ class HttpError extends Error {
     }
 }
 class FileLoader extends Loader {
+    constructor(manager){
+        super(manager);
+    }
     load(url, onLoad, onProgress, onError) {
         if (url === undefined) url = '';
         if (this.path !== undefined) url = this.path + url;
@@ -63,7 +66,7 @@ class FileLoader extends Loader {
                 const reader = response.body.getReader();
                 // Nginx needs X-File-Size check
                 // https://serverfault.com/questions/482875/why-does-nginx-remove-content-length-header-for-chunked-content
-                const contentLength = response.headers.get('Content-Length') || response.headers.get('X-File-Size');
+                const contentLength = response.headers.get('X-File-Size') || response.headers.get('Content-Length');
                 const total = contentLength ? parseInt(contentLength) : 0;
                 const lengthComputable = total !== 0;
                 let loaded = 0;
@@ -73,7 +76,7 @@ class FileLoader extends Loader {
                         readData();
                         function readData() {
                             reader.read().then((param)=>{
-                                let { done , value  } = param;
+                                let { done, value } = param;
                                 if (done) {
                                     controller.close();
                                 } else {
@@ -90,6 +93,8 @@ class FileLoader extends Loader {
                                     controller.enqueue(value);
                                     readData();
                                 }
+                            }, (e)=>{
+                                controller.error(e);
                             });
                         }
                     }
@@ -159,9 +164,6 @@ class FileLoader extends Loader {
     setMimeType(value) {
         this.mimeType = value;
         return this;
-    }
-    constructor(manager){
-        super(manager);
     }
 }
 

@@ -23,6 +23,28 @@ const _box = /*@__PURE__*/ new Box3();
 const _boxMorphTargets = /*@__PURE__*/ new Box3();
 const _vector = /*@__PURE__*/ new Vector3();
 class BufferGeometry extends EventDispatcher {
+    constructor(){
+        super();
+        this.isBufferGeometry = true;
+        Object.defineProperty(this, 'id', {
+            value: _id++
+        });
+        this.uuid = generateUUID();
+        this.name = '';
+        this.type = 'BufferGeometry';
+        this.index = null;
+        this.attributes = {};
+        this.morphAttributes = {};
+        this.morphTargetsRelative = false;
+        this.groups = [];
+        this.boundingBox = null;
+        this.boundingSphere = null;
+        this.drawRange = {
+            start: 0,
+            count: Infinity
+        };
+        this.userData = {};
+    }
     getIndex() {
         return this.index;
     }
@@ -151,7 +173,7 @@ class BufferGeometry extends EventDispatcher {
         const position = this.attributes.position;
         const morphAttributesPosition = this.morphAttributes.position;
         if (position && position.isGLBufferAttribute) {
-            console.error('THREE.BufferGeometry.computeBoundingBox(): GLBufferAttribute requires a manual bounding box. Alternatively set "mesh.frustumCulled" to "false".', this);
+            console.error('THREE.BufferGeometry.computeBoundingBox(): GLBufferAttribute requires a manual bounding box.', this);
             this.boundingBox.set(new Vector3(-Infinity, -Infinity, -Infinity), new Vector3(+Infinity, +Infinity, +Infinity));
             return;
         }
@@ -187,7 +209,7 @@ class BufferGeometry extends EventDispatcher {
         const position = this.attributes.position;
         const morphAttributesPosition = this.morphAttributes.position;
         if (position && position.isGLBufferAttribute) {
-            console.error('THREE.BufferGeometry.computeBoundingSphere(): GLBufferAttribute requires a manual bounding sphere. Alternatively set "mesh.frustumCulled" to "false".', this);
+            console.error('THREE.BufferGeometry.computeBoundingSphere(): GLBufferAttribute requires a manual bounding sphere.', this);
             this.boundingSphere.set(new Vector3(), Infinity);
             return;
         }
@@ -249,28 +271,26 @@ class BufferGeometry extends EventDispatcher {
             console.error('THREE.BufferGeometry: .computeTangents() failed. Missing required attributes (index, position, normal or uv)');
             return;
         }
-        const indices = index.array;
-        const positions = attributes.position.array;
-        const normals = attributes.normal.array;
-        const uvs = attributes.uv.array;
-        const nVertices = positions.length / 3;
+        const positionAttribute = attributes.position;
+        const normalAttribute = attributes.normal;
+        const uvAttribute = attributes.uv;
         if (this.hasAttribute('tangent') === false) {
-            this.setAttribute('tangent', new BufferAttribute(new Float32Array(4 * nVertices), 4));
+            this.setAttribute('tangent', new BufferAttribute(new Float32Array(4 * positionAttribute.count), 4));
         }
-        const tangents = this.getAttribute('tangent').array;
+        const tangentAttribute = this.getAttribute('tangent');
         const tan1 = [], tan2 = [];
-        for(let i = 0; i < nVertices; i++){
+        for(let i = 0; i < positionAttribute.count; i++){
             tan1[i] = new Vector3();
             tan2[i] = new Vector3();
         }
         const vA = new Vector3(), vB = new Vector3(), vC = new Vector3(), uvA = new Vector2(), uvB = new Vector2(), uvC = new Vector2(), sdir = new Vector3(), tdir = new Vector3();
         function handleTriangle(a, b, c) {
-            vA.fromArray(positions, a * 3);
-            vB.fromArray(positions, b * 3);
-            vC.fromArray(positions, c * 3);
-            uvA.fromArray(uvs, a * 2);
-            uvB.fromArray(uvs, b * 2);
-            uvC.fromArray(uvs, c * 2);
+            vA.fromBufferAttribute(positionAttribute, a);
+            vB.fromBufferAttribute(positionAttribute, b);
+            vC.fromBufferAttribute(positionAttribute, c);
+            uvA.fromBufferAttribute(uvAttribute, a);
+            uvB.fromBufferAttribute(uvAttribute, b);
+            uvC.fromBufferAttribute(uvAttribute, c);
             vB.sub(vA);
             vC.sub(vA);
             uvB.sub(uvA);
@@ -292,7 +312,7 @@ class BufferGeometry extends EventDispatcher {
             groups = [
                 {
                     start: 0,
-                    count: indices.length
+                    count: index.count
                 }
             ];
         }
@@ -301,13 +321,13 @@ class BufferGeometry extends EventDispatcher {
             const start = group.start;
             const count = group.count;
             for(let j = start, jl = start + count; j < jl; j += 3){
-                handleTriangle(indices[j + 0], indices[j + 1], indices[j + 2]);
+                handleTriangle(index.getX(j + 0), index.getX(j + 1), index.getX(j + 2));
             }
         }
         const tmp = new Vector3(), tmp2 = new Vector3();
         const n = new Vector3(), n2 = new Vector3();
         function handleVertex(v) {
-            n.fromArray(normals, v * 3);
+            n.fromBufferAttribute(normalAttribute, v);
             n2.copy(n);
             const t = tan1[v];
             // Gram-Schmidt orthogonalize
@@ -317,19 +337,16 @@ class BufferGeometry extends EventDispatcher {
             tmp2.crossVectors(n2, t);
             const test = tmp2.dot(tan2[v]);
             const w = test < 0.0 ? -1.0 : 1.0;
-            tangents[v * 4] = tmp.x;
-            tangents[v * 4 + 1] = tmp.y;
-            tangents[v * 4 + 2] = tmp.z;
-            tangents[v * 4 + 3] = w;
+            tangentAttribute.setXYZW(v, tmp.x, tmp.y, tmp.z, w);
         }
         for(let i = 0, il = groups.length; i < il; ++i){
             const group = groups[i];
             const start = group.start;
             const count = group.count;
             for(let j = start, jl = start + count; j < jl; j += 3){
-                handleVertex(indices[j + 0]);
-                handleVertex(indices[j + 1]);
-                handleVertex(indices[j + 2]);
+                handleVertex(index.getX(j + 0));
+                handleVertex(index.getX(j + 1));
+                handleVertex(index.getX(j + 2));
             }
         }
     }
@@ -583,28 +600,6 @@ class BufferGeometry extends EventDispatcher {
         this.dispatchEvent({
             type: 'dispose'
         });
-    }
-    constructor(){
-        super();
-        this.isBufferGeometry = true;
-        Object.defineProperty(this, 'id', {
-            value: _id++
-        });
-        this.uuid = generateUUID();
-        this.name = '';
-        this.type = 'BufferGeometry';
-        this.index = null;
-        this.attributes = {};
-        this.morphAttributes = {};
-        this.morphTargetsRelative = false;
-        this.groups = [];
-        this.boundingBox = null;
-        this.boundingSphere = null;
-        this.drawRange = {
-            start: 0,
-            count: Infinity
-        };
-        this.userData = {};
     }
 }
 

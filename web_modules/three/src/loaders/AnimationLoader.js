@@ -21,6 +21,9 @@ import './Cache.js';
 import './LoadingManager.js';
 
 class AnimationLoader extends Loader {
+    constructor(manager){
+        super(manager);
+    }
     load(url, onLoad, onProgress, onError) {
         const scope = this;
         const loader = new FileLoader(this.manager);
@@ -47,9 +50,6 @@ class AnimationLoader extends Loader {
             animations.push(clip);
         }
         return animations;
-    }
-    constructor(manager){
-        super(manager);
     }
 }
 

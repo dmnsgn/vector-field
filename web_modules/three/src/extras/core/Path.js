@@ -11,7 +11,7 @@ import '../../math/Vector3.js';
 import '../../math/Quaternion.js';
 import '../../math/Matrix4.js';
 import '../../constants.js';
-import '../../../../_chunks/Curves-1010459e.js';
+import '../../../../_chunks/Curves-cjyKFada.js';
 import '../curves/ArcCurve.js';
 import '../curves/CatmullRomCurve3.js';
 import '../curves/CubicBezierCurve3.js';
@@ -20,6 +20,14 @@ import '../curves/LineCurve3.js';
 import '../curves/QuadraticBezierCurve3.js';
 
 class Path extends CurvePath {
+    constructor(points){
+        super();
+        this.type = 'Path';
+        this.currentPoint = new Vector2();
+        if (points) {
+            this.setFromPoints(points);
+        }
+    }
     setFromPoints(points) {
         this.moveTo(points[0].x, points[0].y);
         for(let i = 1, l = points.length; i < l; i++){
@@ -102,14 +110,6 @@ class Path extends CurvePath {
         super.fromJSON(json);
         this.currentPoint.fromArray(json.currentPoint);
         return this;
-    }
-    constructor(points){
-        super();
-        this.type = 'Path';
-        this.currentPoint = new Vector2();
-        if (points) {
-            this.setFromPoints(points);
-        }
     }
 }
 

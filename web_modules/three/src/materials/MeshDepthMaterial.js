@@ -1,21 +1,12 @@
 import { Material } from './Material.js';
 import { BasicDepthPacking } from '../constants.js';
-import '../core/EventDispatcher.js';
+import '../math/Color.js';
 import '../math/MathUtils.js';
+import '../math/ColorManagement.js';
+import '../math/Matrix3.js';
+import '../core/EventDispatcher.js';
 
 class MeshDepthMaterial extends Material {
-    copy(source) {
-        super.copy(source);
-        this.depthPacking = source.depthPacking;
-        this.map = source.map;
-        this.alphaMap = source.alphaMap;
-        this.displacementMap = source.displacementMap;
-        this.displacementScale = source.displacementScale;
-        this.displacementBias = source.displacementBias;
-        this.wireframe = source.wireframe;
-        this.wireframeLinewidth = source.wireframeLinewidth;
-        return this;
-    }
     constructor(parameters){
         super();
         this.isMeshDepthMaterial = true;
@@ -29,6 +20,18 @@ class MeshDepthMaterial extends Material {
         this.wireframe = false;
         this.wireframeLinewidth = 1;
         this.setValues(parameters);
+    }
+    copy(source) {
+        super.copy(source);
+        this.depthPacking = source.depthPacking;
+        this.map = source.map;
+        this.alphaMap = source.alphaMap;
+        this.displacementMap = source.displacementMap;
+        this.displacementScale = source.displacementScale;
+        this.displacementBias = source.displacementBias;
+        this.wireframe = source.wireframe;
+        this.wireframeLinewidth = source.wireframeLinewidth;
+        return this;
     }
 }
 

@@ -1,6 +1,14 @@
 import { DefaultLoadingManager } from './LoadingManager.js';
 
 class Loader {
+    constructor(manager){
+        this.manager = manager !== undefined ? manager : DefaultLoadingManager;
+        this.crossOrigin = 'anonymous';
+        this.withCredentials = false;
+        this.path = '';
+        this.resourcePath = '';
+        this.requestHeader = {};
+    }
     load() {}
     loadAsync(url, onProgress) {
         const scope = this;
@@ -28,14 +36,6 @@ class Loader {
     setRequestHeader(requestHeader) {
         this.requestHeader = requestHeader;
         return this;
-    }
-    constructor(manager){
-        this.manager = manager !== undefined ? manager : DefaultLoadingManager;
-        this.crossOrigin = 'anonymous';
-        this.withCredentials = false;
-        this.path = '';
-        this.resourcePath = '';
-        this.requestHeader = {};
     }
 }
 Loader.DEFAULT_MATERIAL_NAME = '__DEFAULT';

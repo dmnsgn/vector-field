@@ -7,16 +7,6 @@ import '../math/ColorManagement.js';
 import '../math/Matrix3.js';
 
 class SpriteMaterial extends Material {
-    copy(source) {
-        super.copy(source);
-        this.color.copy(source.color);
-        this.map = source.map;
-        this.alphaMap = source.alphaMap;
-        this.rotation = source.rotation;
-        this.sizeAttenuation = source.sizeAttenuation;
-        this.fog = source.fog;
-        return this;
-    }
     constructor(parameters){
         super();
         this.isSpriteMaterial = true;
@@ -29,6 +19,16 @@ class SpriteMaterial extends Material {
         this.transparent = true;
         this.fog = true;
         this.setValues(parameters);
+    }
+    copy(source) {
+        super.copy(source);
+        this.color.copy(source.color);
+        this.map = source.map;
+        this.alphaMap = source.alphaMap;
+        this.rotation = source.rotation;
+        this.sizeAttenuation = source.sizeAttenuation;
+        this.fog = source.fog;
+        return this;
     }
 }
 

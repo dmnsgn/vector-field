@@ -17,14 +17,6 @@ import '../utils.js';
 import '../extras/DataUtils.js';
 
 class PlaneGeometry extends BufferGeometry {
-    copy(source) {
-        super.copy(source);
-        this.parameters = Object.assign({}, source.parameters);
-        return this;
-    }
-    static fromJSON(data) {
-        return new PlaneGeometry(data.width, data.height, data.widthSegments, data.heightSegments);
-    }
     constructor(width = 1, height = 1, widthSegments = 1, heightSegments = 1){
         super();
         this.type = 'PlaneGeometry';
@@ -71,6 +63,14 @@ class PlaneGeometry extends BufferGeometry {
         this.setAttribute('position', new Float32BufferAttribute(vertices, 3));
         this.setAttribute('normal', new Float32BufferAttribute(normals, 3));
         this.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
+    }
+    copy(source) {
+        super.copy(source);
+        this.parameters = Object.assign({}, source.parameters);
+        return this;
+    }
+    static fromJSON(data) {
+        return new PlaneGeometry(data.width, data.height, data.widthSegments, data.heightSegments);
     }
 }
 

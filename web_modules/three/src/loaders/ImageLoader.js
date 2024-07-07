@@ -4,6 +4,9 @@ import { createElementNS } from '../utils.js';
 import './LoadingManager.js';
 
 class ImageLoader extends Loader {
+    constructor(manager){
+        super(manager);
+    }
     load(url, onLoad, onProgress, onError) {
         if (this.path !== undefined) url = this.path + url;
         url = this.manager.resolveURL(url);
@@ -42,9 +45,6 @@ class ImageLoader extends Loader {
         scope.manager.itemStart(url);
         image.src = url;
         return image;
-    }
-    constructor(manager){
-        super(manager);
     }
 }
 

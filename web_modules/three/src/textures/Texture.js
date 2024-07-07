@@ -1,15 +1,52 @@
 import { EventDispatcher } from '../core/EventDispatcher.js';
-import { UVMapping, MirroredRepeatWrapping, ClampToEdgeWrapping, RepeatWrapping, SRGBColorSpace, sRGBEncoding, LinearEncoding, NoColorSpace, LinearFilter, LinearMipmapLinearFilter, RGBAFormat, UnsignedByteType } from '../constants.js';
+import { ClampToEdgeWrapping, LinearFilter, LinearMipmapLinearFilter, RGBAFormat, UnsignedByteType, NoColorSpace, UVMapping, MirroredRepeatWrapping, RepeatWrapping } from '../constants.js';
 import { generateUUID } from '../math/MathUtils.js';
 import { Vector2 } from '../math/Vector2.js';
 import { Matrix3 } from '../math/Matrix3.js';
 import { Source } from './Source.js';
-import { warnOnce } from '../utils.js';
 import '../extras/ImageUtils.js';
+import '../utils.js';
 import '../math/ColorManagement.js';
 
 let _textureId = 0;
 class Texture extends EventDispatcher {
+    constructor(image = Texture.DEFAULT_IMAGE, mapping = Texture.DEFAULT_MAPPING, wrapS = ClampToEdgeWrapping, wrapT = ClampToEdgeWrapping, magFilter = LinearFilter, minFilter = LinearMipmapLinearFilter, format = RGBAFormat, type = UnsignedByteType, anisotropy = Texture.DEFAULT_ANISOTROPY, colorSpace = NoColorSpace){
+        super();
+        this.isTexture = true;
+        Object.defineProperty(this, 'id', {
+            value: _textureId++
+        });
+        this.uuid = generateUUID();
+        this.name = '';
+        this.source = new Source(image);
+        this.mipmaps = [];
+        this.mapping = mapping;
+        this.channel = 0;
+        this.wrapS = wrapS;
+        this.wrapT = wrapT;
+        this.magFilter = magFilter;
+        this.minFilter = minFilter;
+        this.anisotropy = anisotropy;
+        this.format = format;
+        this.internalFormat = null;
+        this.type = type;
+        this.offset = new Vector2(0, 0);
+        this.repeat = new Vector2(1, 1);
+        this.center = new Vector2(0, 0);
+        this.rotation = 0;
+        this.matrixAutoUpdate = true;
+        this.matrix = new Matrix3();
+        this.generateMipmaps = true;
+        this.premultiplyAlpha = false;
+        this.flipY = true;
+        this.unpackAlignment = 4; // valid values: 1, 2, 4, 8 (see http://www.khronos.org/opengles/sdk/docs/man/xhtml/glPixelStorei.xml)
+        this.colorSpace = colorSpace;
+        this.userData = {};
+        this.version = 0;
+        this.onUpdate = null;
+        this.isRenderTargetTexture = false; // indicates whether a texture belongs to a render target or not
+        this.pmremVersion = 0; // indicates whether this texture should be processed by PMREMGenerator or not (only relevant for render target textures)
+    }
     get image() {
         return this.source.data;
     }
@@ -156,55 +193,10 @@ class Texture extends EventDispatcher {
             this.source.needsUpdate = true;
         }
     }
-    get encoding() {
-        warnOnce('THREE.Texture: Property .encoding has been replaced by .colorSpace.');
-        return this.colorSpace === SRGBColorSpace ? sRGBEncoding : LinearEncoding;
-    }
-    set encoding(encoding) {
-        warnOnce('THREE.Texture: Property .encoding has been replaced by .colorSpace.');
-        this.colorSpace = encoding === sRGBEncoding ? SRGBColorSpace : NoColorSpace;
-    }
-    constructor(image = Texture.DEFAULT_IMAGE, mapping = Texture.DEFAULT_MAPPING, wrapS = ClampToEdgeWrapping, wrapT = ClampToEdgeWrapping, magFilter = LinearFilter, minFilter = LinearMipmapLinearFilter, format = RGBAFormat, type = UnsignedByteType, anisotropy = Texture.DEFAULT_ANISOTROPY, colorSpace = NoColorSpace){
-        super();
-        this.isTexture = true;
-        Object.defineProperty(this, 'id', {
-            value: _textureId++
-        });
-        this.uuid = generateUUID();
-        this.name = '';
-        this.source = new Source(image);
-        this.mipmaps = [];
-        this.mapping = mapping;
-        this.channel = 0;
-        this.wrapS = wrapS;
-        this.wrapT = wrapT;
-        this.magFilter = magFilter;
-        this.minFilter = minFilter;
-        this.anisotropy = anisotropy;
-        this.format = format;
-        this.internalFormat = null;
-        this.type = type;
-        this.offset = new Vector2(0, 0);
-        this.repeat = new Vector2(1, 1);
-        this.center = new Vector2(0, 0);
-        this.rotation = 0;
-        this.matrixAutoUpdate = true;
-        this.matrix = new Matrix3();
-        this.generateMipmaps = true;
-        this.premultiplyAlpha = false;
-        this.flipY = true;
-        this.unpackAlignment = 4; // valid values: 1, 2, 4, 8 (see http://www.khronos.org/opengles/sdk/docs/man/xhtml/glPixelStorei.xml)
-        if (typeof colorSpace === 'string') {
-            this.colorSpace = colorSpace;
-        } else {
-            warnOnce('THREE.Texture: Property .encoding has been replaced by .colorSpace.');
-            this.colorSpace = colorSpace === sRGBEncoding ? SRGBColorSpace : NoColorSpace;
+    set needsPMREMUpdate(value) {
+        if (value === true) {
+            this.pmremVersion++;
         }
-        this.userData = {};
-        this.version = 0;
-        this.onUpdate = null;
-        this.isRenderTargetTexture = false; // indicates whether a texture belongs to a render target or not
-        this.needsPMREMUpdate = false; // indicates whether this texture should be processed by PMREMGenerator or not (only relevant for render target textures)
     }
 }
 Texture.DEFAULT_IMAGE = null;

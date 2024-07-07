@@ -24,25 +24,6 @@ import '../utils.js';
 import '../extras/DataUtils.js';
 
 class AxesHelper extends LineSegments {
-    setColors(xAxisColor, yAxisColor, zAxisColor) {
-        const color = new Color();
-        const array = this.geometry.attributes.color.array;
-        color.set(xAxisColor);
-        color.toArray(array, 0);
-        color.toArray(array, 3);
-        color.set(yAxisColor);
-        color.toArray(array, 6);
-        color.toArray(array, 9);
-        color.set(zAxisColor);
-        color.toArray(array, 12);
-        color.toArray(array, 15);
-        this.geometry.attributes.color.needsUpdate = true;
-        return this;
-    }
-    dispose() {
-        this.geometry.dispose();
-        this.material.dispose();
-    }
     constructor(size = 1){
         const vertices = [
             0,
@@ -93,6 +74,25 @@ class AxesHelper extends LineSegments {
         });
         super(geometry, material);
         this.type = 'AxesHelper';
+    }
+    setColors(xAxisColor, yAxisColor, zAxisColor) {
+        const color = new Color();
+        const array = this.geometry.attributes.color.array;
+        color.set(xAxisColor);
+        color.toArray(array, 0);
+        color.toArray(array, 3);
+        color.set(yAxisColor);
+        color.toArray(array, 6);
+        color.toArray(array, 9);
+        color.set(zAxisColor);
+        color.toArray(array, 12);
+        color.toArray(array, 15);
+        this.geometry.attributes.color.needsUpdate = true;
+        return this;
+    }
+    dispose() {
+        this.geometry.dispose();
+        this.material.dispose();
     }
 }
 

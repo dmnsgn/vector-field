@@ -1,6 +1,17 @@
 import { clamp } from './MathUtils.js';
 
-class Spherical {
+/**
+ * Ref: https://en.wikipedia.org/wiki/Spherical_coordinate_system
+ *
+ * phi (the polar angle) is measured from the positive y-axis. The positive y-axis is up.
+ * theta (the azimuthal angle) is measured from the positive z-axis.
+ */ class Spherical {
+    constructor(radius = 1, phi = 0, theta = 0){
+        this.radius = radius;
+        this.phi = phi; // polar angle
+        this.theta = theta; // azimuthal angle
+        return this;
+    }
     set(radius, phi, theta) {
         this.radius = radius;
         this.phi = phi;
@@ -35,12 +46,6 @@ class Spherical {
     }
     clone() {
         return new this.constructor().copy(this);
-    }
-    constructor(radius = 1, phi = 0, theta = 0){
-        this.radius = radius;
-        this.phi = phi; // polar angle
-        this.theta = theta; // azimuthal angle
-        return this;
     }
 }
 

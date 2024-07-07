@@ -1,4 +1,10 @@
 class AudioAnalyser {
+    constructor(audio, fftSize = 2048){
+        this.analyser = audio.context.createAnalyser();
+        this.analyser.fftSize = fftSize;
+        this.data = new Uint8Array(this.analyser.frequencyBinCount);
+        audio.getOutput().connect(this.analyser);
+    }
     getFrequencyData() {
         this.analyser.getByteFrequencyData(this.data);
         return this.data;
@@ -10,12 +16,6 @@ class AudioAnalyser {
             value += data[i];
         }
         return value / data.length;
-    }
-    constructor(audio, fftSize = 2048){
-        this.analyser = audio.context.createAnalyser();
-        this.analyser.fftSize = fftSize;
-        this.data = new Uint8Array(this.analyser.frequencyBinCount);
-        audio.getOutput().connect(this.analyser);
     }
 }
 

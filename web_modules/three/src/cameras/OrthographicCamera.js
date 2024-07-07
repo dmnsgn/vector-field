@@ -11,6 +11,20 @@ import '../core/Layers.js';
 import '../math/Matrix3.js';
 
 class OrthographicCamera extends Camera {
+    constructor(left = -1, right = 1, top = 1, bottom = -1, near = 0.1, far = 2000){
+        super();
+        this.isOrthographicCamera = true;
+        this.type = 'OrthographicCamera';
+        this.zoom = 1;
+        this.view = null;
+        this.left = left;
+        this.right = right;
+        this.top = top;
+        this.bottom = bottom;
+        this.near = near;
+        this.far = far;
+        this.updateProjectionMatrix();
+    }
     copy(source, recursive) {
         super.copy(source, recursive);
         this.left = source.left;
@@ -81,20 +95,6 @@ class OrthographicCamera extends Camera {
         data.object.far = this.far;
         if (this.view !== null) data.object.view = Object.assign({}, this.view);
         return data;
-    }
-    constructor(left = -1, right = 1, top = 1, bottom = -1, near = 0.1, far = 2000){
-        super();
-        this.isOrthographicCamera = true;
-        this.type = 'OrthographicCamera';
-        this.zoom = 1;
-        this.view = null;
-        this.left = left;
-        this.right = right;
-        this.top = top;
-        this.bottom = bottom;
-        this.near = near;
-        this.far = far;
-        this.updateProjectionMatrix();
     }
 }
 

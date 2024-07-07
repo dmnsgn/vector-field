@@ -17,14 +17,6 @@ import '../utils.js';
 import '../extras/DataUtils.js';
 
 class CylinderGeometry extends BufferGeometry {
-    copy(source) {
-        super.copy(source);
-        this.parameters = Object.assign({}, source.parameters);
-        return this;
-    }
-    static fromJSON(data) {
-        return new CylinderGeometry(data.radiusTop, data.radiusBottom, data.height, data.radialSegments, data.heightSegments, data.openEnded, data.thetaStart, data.thetaLength);
-    }
     constructor(radiusTop = 1, radiusBottom = 1, height = 1, radialSegments = 32, heightSegments = 1, openEnded = false, thetaStart = 0, thetaLength = Math.PI * 2){
         super();
         this.type = 'CylinderGeometry';
@@ -176,6 +168,14 @@ class CylinderGeometry extends BufferGeometry {
             // calculate new start value for groups
             groupStart += groupCount;
         }
+    }
+    copy(source) {
+        super.copy(source);
+        this.parameters = Object.assign({}, source.parameters);
+        return this;
+    }
+    static fromJSON(data) {
+        return new CylinderGeometry(data.radiusTop, data.radiusBottom, data.height, data.radialSegments, data.heightSegments, data.openEnded, data.thetaStart, data.thetaLength);
     }
 }
 

@@ -14,6 +14,11 @@ import '../math/Color.js';
 import '../math/ColorManagement.js';
 
 class LightProbe extends Light {
+    constructor(sh = new SphericalHarmonics3(), intensity = 1){
+        super(undefined, intensity);
+        this.isLightProbe = true;
+        this.sh = sh;
+    }
     copy(source) {
         super.copy(source);
         this.sh.copy(source.sh);
@@ -28,11 +33,6 @@ class LightProbe extends Light {
         const data = super.toJSON(meta);
         data.object.sh = this.sh.toArray();
         return data;
-    }
-    constructor(sh = new SphericalHarmonics3(), intensity = 1){
-        super(undefined, intensity);
-        this.isLightProbe = true;
-        this.sh = sh;
     }
 }
 

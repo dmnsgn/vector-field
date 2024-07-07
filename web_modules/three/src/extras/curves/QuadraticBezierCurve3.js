@@ -8,6 +8,14 @@ import '../../constants.js';
 import '../../math/Quaternion.js';
 
 class QuadraticBezierCurve3 extends Curve {
+    constructor(v0 = new Vector3(), v1 = new Vector3(), v2 = new Vector3()){
+        super();
+        this.isQuadraticBezierCurve3 = true;
+        this.type = 'QuadraticBezierCurve3';
+        this.v0 = v0;
+        this.v1 = v1;
+        this.v2 = v2;
+    }
     getPoint(t, optionalTarget) {
         if (optionalTarget === void 0) optionalTarget = new Vector3();
         const point = optionalTarget;
@@ -35,14 +43,6 @@ class QuadraticBezierCurve3 extends Curve {
         this.v1.fromArray(json.v1);
         this.v2.fromArray(json.v2);
         return this;
-    }
-    constructor(v0 = new Vector3(), v1 = new Vector3(), v2 = new Vector3()){
-        super();
-        this.isQuadraticBezierCurve3 = true;
-        this.type = 'QuadraticBezierCurve3';
-        this.v0 = v0;
-        this.v1 = v1;
-        this.v2 = v2;
     }
 }
 

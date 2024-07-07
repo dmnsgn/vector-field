@@ -24,18 +24,6 @@ import '../utils.js';
 import '../extras/DataUtils.js';
 
 class Box3Helper extends LineSegments {
-    updateMatrixWorld(force) {
-        const box = this.box;
-        if (box.isEmpty()) return;
-        box.getCenter(this.position);
-        box.getSize(this.scale);
-        this.scale.multiplyScalar(0.5);
-        super.updateMatrixWorld(force);
-    }
-    dispose() {
-        this.geometry.dispose();
-        this.material.dispose();
-    }
     constructor(box, color = 0xffff00){
         const indices = new Uint16Array([
             0,
@@ -99,6 +87,18 @@ class Box3Helper extends LineSegments {
         this.box = box;
         this.type = 'Box3Helper';
         this.geometry.computeBoundingSphere();
+    }
+    updateMatrixWorld(force) {
+        const box = this.box;
+        if (box.isEmpty()) return;
+        box.getCenter(this.position);
+        box.getSize(this.scale);
+        this.scale.multiplyScalar(0.5);
+        super.updateMatrixWorld(force);
+    }
+    dispose() {
+        this.geometry.dispose();
+        this.material.dispose();
     }
 }
 

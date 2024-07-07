@@ -3,18 +3,51 @@ import { Vector2 } from '../math/Vector2.js';
 import { denormalize, normalize } from '../math/MathUtils.js';
 import { StaticDrawUsage, FloatType } from '../constants.js';
 import { fromHalfFloat, toHalfFloat } from '../extras/DataUtils.js';
+import { warnOnce } from '../utils.js';
 import '../math/Quaternion.js';
 
 const _vector = /*@__PURE__*/ new Vector3();
 const _vector2 = /*@__PURE__*/ new Vector2();
 class BufferAttribute {
+    constructor(array, itemSize, normalized = false){
+        if (Array.isArray(array)) {
+            throw new TypeError('THREE.BufferAttribute: array should be a Typed Array.');
+        }
+        this.isBufferAttribute = true;
+        this.name = '';
+        this.array = array;
+        this.itemSize = itemSize;
+        this.count = array !== undefined ? array.length / itemSize : 0;
+        this.normalized = normalized;
+        this.usage = StaticDrawUsage;
+        this._updateRange = {
+            offset: 0,
+            count: -1
+        };
+        this.updateRanges = [];
+        this.gpuType = FloatType;
+        this.version = 0;
+    }
     onUploadCallback() {}
     set needsUpdate(value) {
         if (value === true) this.version++;
     }
+    get updateRange() {
+        warnOnce('THREE.BufferAttribute: updateRange() is deprecated and will be removed in r169. Use addUpdateRange() instead.'); // @deprecated, r159
+        return this._updateRange;
+    }
     setUsage(value) {
         this.usage = value;
         return this;
+    }
+    addUpdateRange(start, count) {
+        this.updateRanges.push({
+            start,
+            count
+        });
+    }
+    clearUpdateRanges() {
+        this.updateRanges.length = 0;
     }
     copy(source) {
         this.name = source.name;
@@ -186,26 +219,7 @@ class BufferAttribute {
         };
         if (this.name !== '') data.name = this.name;
         if (this.usage !== StaticDrawUsage) data.usage = this.usage;
-        if (this.updateRange.offset !== 0 || this.updateRange.count !== -1) data.updateRange = this.updateRange;
         return data;
-    }
-    constructor(array, itemSize, normalized = false){
-        if (Array.isArray(array)) {
-            throw new TypeError('THREE.BufferAttribute: array should be a Typed Array.');
-        }
-        this.isBufferAttribute = true;
-        this.name = '';
-        this.array = array;
-        this.itemSize = itemSize;
-        this.count = array !== undefined ? array.length / itemSize : 0;
-        this.normalized = normalized;
-        this.usage = StaticDrawUsage;
-        this.updateRange = {
-            offset: 0,
-            count: -1
-        };
-        this.gpuType = FloatType;
-        this.version = 0;
     }
 }
 //
@@ -245,6 +259,10 @@ class Uint32BufferAttribute extends BufferAttribute {
     }
 }
 class Float16BufferAttribute extends BufferAttribute {
+    constructor(array, itemSize, normalized){
+        super(new Uint16Array(array), itemSize, normalized);
+        this.isFloat16BufferAttribute = true;
+    }
     getX(index) {
         let x = fromHalfFloat(this.array[index * this.itemSize]);
         if (this.normalized) x = denormalize(x, this.array);
@@ -321,20 +339,11 @@ class Float16BufferAttribute extends BufferAttribute {
         this.array[index + 3] = toHalfFloat(w);
         return this;
     }
-    constructor(array, itemSize, normalized){
-        super(new Uint16Array(array), itemSize, normalized);
-        this.isFloat16BufferAttribute = true;
-    }
 }
 class Float32BufferAttribute extends BufferAttribute {
     constructor(array, itemSize, normalized){
         super(new Float32Array(array), itemSize, normalized);
     }
 }
-class Float64BufferAttribute extends BufferAttribute {
-    constructor(array, itemSize, normalized){
-        super(new Float64Array(array), itemSize, normalized);
-    }
-}
 
-export { BufferAttribute, Float16BufferAttribute, Float32BufferAttribute, Float64BufferAttribute, Int16BufferAttribute, Int32BufferAttribute, Int8BufferAttribute, Uint16BufferAttribute, Uint32BufferAttribute, Uint8BufferAttribute, Uint8ClampedBufferAttribute };
+export { BufferAttribute, Float16BufferAttribute, Float32BufferAttribute, Int16BufferAttribute, Int32BufferAttribute, Int8BufferAttribute, Uint16BufferAttribute, Uint32BufferAttribute, Uint8BufferAttribute, Uint8ClampedBufferAttribute };

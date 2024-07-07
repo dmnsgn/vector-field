@@ -17,11 +17,6 @@ import '../utils.js';
 import '../extras/DataUtils.js';
 
 class WireframeGeometry extends BufferGeometry {
-    copy(source) {
-        super.copy(source);
-        this.parameters = Object.assign({}, source.parameters);
-        return this;
-    }
     constructor(geometry = null){
         super();
         this.type = 'WireframeGeometry';
@@ -88,6 +83,11 @@ class WireframeGeometry extends BufferGeometry {
             // build geometry
             this.setAttribute('position', new Float32BufferAttribute(vertices, 3));
         }
+    }
+    copy(source) {
+        super.copy(source);
+        this.parameters = Object.assign({}, source.parameters);
+        return this;
     }
 }
 function isUniqueEdge(start, end, edges) {

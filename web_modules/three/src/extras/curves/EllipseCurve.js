@@ -7,8 +7,22 @@ import '../../math/Matrix4.js';
 import '../../constants.js';
 
 class EllipseCurve extends Curve {
+    constructor(aX = 0, aY = 0, xRadius = 1, yRadius = 1, aStartAngle = 0, aEndAngle = Math.PI * 2, aClockwise = false, aRotation = 0){
+        super();
+        this.isEllipseCurve = true;
+        this.type = 'EllipseCurve';
+        this.aX = aX;
+        this.aY = aY;
+        this.xRadius = xRadius;
+        this.yRadius = yRadius;
+        this.aStartAngle = aStartAngle;
+        this.aEndAngle = aEndAngle;
+        this.aClockwise = aClockwise;
+        this.aRotation = aRotation;
+    }
     getPoint(t, optionalTarget) {
-        const point = optionalTarget || new Vector2();
+        if (optionalTarget === void 0) optionalTarget = new Vector2();
+        const point = optionalTarget;
         const twoPi = Math.PI * 2;
         let deltaAngle = this.aEndAngle - this.aStartAngle;
         const samePoints = Math.abs(deltaAngle) < Number.EPSILON;
@@ -78,19 +92,6 @@ class EllipseCurve extends Curve {
         this.aClockwise = json.aClockwise;
         this.aRotation = json.aRotation;
         return this;
-    }
-    constructor(aX = 0, aY = 0, xRadius = 1, yRadius = 1, aStartAngle = 0, aEndAngle = Math.PI * 2, aClockwise = false, aRotation = 0){
-        super();
-        this.isEllipseCurve = true;
-        this.type = 'EllipseCurve';
-        this.aX = aX;
-        this.aY = aY;
-        this.xRadius = xRadius;
-        this.yRadius = yRadius;
-        this.aStartAngle = aStartAngle;
-        this.aEndAngle = aEndAngle;
-        this.aClockwise = aClockwise;
-        this.aRotation = aRotation;
     }
 }
 

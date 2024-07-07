@@ -10,6 +10,31 @@ import '../core/Layers.js';
 import '../math/Matrix3.js';
 
 class Audio extends Object3D {
+    constructor(listener){
+        super();
+        this.type = 'Audio';
+        this.listener = listener;
+        this.context = listener.context;
+        this.gain = this.context.createGain();
+        this.gain.connect(listener.getInput());
+        this.autoplay = false;
+        this.buffer = null;
+        this.detune = 0;
+        this.loop = false;
+        this.loopStart = 0;
+        this.loopEnd = 0;
+        this.offset = 0;
+        this.duration = undefined;
+        this.playbackRate = 1;
+        this.isPlaying = false;
+        this.hasPlaybackControl = true;
+        this.source = null;
+        this.sourceType = 'empty';
+        this._startedAt = 0;
+        this._progress = 0;
+        this._connected = false;
+        this.filters = [];
+    }
     getOutput() {
         return this.gain;
     }
@@ -140,8 +165,7 @@ class Audio extends Object3D {
     }
     setDetune(value) {
         this.detune = value;
-        if (this.source.detune === undefined) return; // only set detune when available
-        if (this.isPlaying === true) {
+        if (this.isPlaying === true && this.source.detune !== undefined) {
             this.source.detune.setTargetAtTime(this.detune, this.context.currentTime, 0.01);
         }
         return this;
@@ -206,31 +230,6 @@ class Audio extends Object3D {
     setVolume(value) {
         this.gain.gain.setTargetAtTime(value, this.context.currentTime, 0.01);
         return this;
-    }
-    constructor(listener){
-        super();
-        this.type = 'Audio';
-        this.listener = listener;
-        this.context = listener.context;
-        this.gain = this.context.createGain();
-        this.gain.connect(listener.getInput());
-        this.autoplay = false;
-        this.buffer = null;
-        this.detune = 0;
-        this.loop = false;
-        this.loopStart = 0;
-        this.loopEnd = 0;
-        this.offset = 0;
-        this.duration = undefined;
-        this.playbackRate = 1;
-        this.isPlaying = false;
-        this.hasPlaybackControl = true;
-        this.source = null;
-        this.sourceType = 'empty';
-        this._startedAt = 0;
-        this._progress = 0;
-        this._connected = false;
-        this.filters = [];
     }
 }
 

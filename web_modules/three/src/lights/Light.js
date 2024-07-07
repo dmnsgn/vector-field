@@ -12,6 +12,13 @@ import '../math/Matrix3.js';
 import '../math/ColorManagement.js';
 
 class Light extends Object3D {
+    constructor(color, intensity = 1){
+        super();
+        this.isLight = true;
+        this.type = 'Light';
+        this.color = new Color(color);
+        this.intensity = intensity;
+    }
     dispose() {
     // Empty here in base class; some subclasses override.
     }
@@ -31,14 +38,8 @@ class Light extends Object3D {
         if (this.decay !== undefined) data.object.decay = this.decay;
         if (this.penumbra !== undefined) data.object.penumbra = this.penumbra;
         if (this.shadow !== undefined) data.object.shadow = this.shadow.toJSON();
+        if (this.target !== undefined) data.object.target = this.target.uuid;
         return data;
-    }
-    constructor(color, intensity = 1){
-        super();
-        this.isLight = true;
-        this.type = 'Light';
-        this.color = new Color(color);
-        this.intensity = intensity;
     }
 }
 

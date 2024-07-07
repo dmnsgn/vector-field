@@ -7,6 +7,13 @@ import '../../math/Matrix4.js';
 import '../../constants.js';
 
 class LineCurve extends Curve {
+    constructor(v1 = new Vector2(), v2 = new Vector2()){
+        super();
+        this.isLineCurve = true;
+        this.type = 'LineCurve';
+        this.v1 = v1;
+        this.v2 = v2;
+    }
     getPoint(t, optionalTarget) {
         if (optionalTarget === void 0) optionalTarget = new Vector2();
         const point = optionalTarget;
@@ -46,13 +53,6 @@ class LineCurve extends Curve {
         this.v1.fromArray(json.v1);
         this.v2.fromArray(json.v2);
         return this;
-    }
-    constructor(v1 = new Vector2(), v2 = new Vector2()){
-        super();
-        this.isLineCurve = true;
-        this.type = 'LineCurve';
-        this.v1 = v1;
-        this.v2 = v2;
     }
 }
 

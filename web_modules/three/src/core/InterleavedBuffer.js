@@ -1,14 +1,42 @@
 import { generateUUID } from '../math/MathUtils.js';
 import { StaticDrawUsage } from '../constants.js';
+import { warnOnce } from '../utils.js';
 
 class InterleavedBuffer {
+    constructor(array, stride){
+        this.isInterleavedBuffer = true;
+        this.array = array;
+        this.stride = stride;
+        this.count = array !== undefined ? array.length / stride : 0;
+        this.usage = StaticDrawUsage;
+        this._updateRange = {
+            offset: 0,
+            count: -1
+        };
+        this.updateRanges = [];
+        this.version = 0;
+        this.uuid = generateUUID();
+    }
     onUploadCallback() {}
     set needsUpdate(value) {
         if (value === true) this.version++;
     }
+    get updateRange() {
+        warnOnce('THREE.InterleavedBuffer: updateRange() is deprecated and will be removed in r169. Use addUpdateRange() instead.'); // @deprecated, r159
+        return this._updateRange;
+    }
     setUsage(value) {
         this.usage = value;
         return this;
+    }
+    addUpdateRange(start, count) {
+        this.updateRanges.push({
+            start,
+            count
+        });
+    }
+    clearUpdateRanges() {
+        this.updateRanges.length = 0;
     }
     copy(source) {
         this.array = new source.array.constructor(source.array);
@@ -67,19 +95,6 @@ class InterleavedBuffer {
             type: this.array.constructor.name,
             stride: this.stride
         };
-    }
-    constructor(array, stride){
-        this.isInterleavedBuffer = true;
-        this.array = array;
-        this.stride = stride;
-        this.count = array !== undefined ? array.length / stride : 0;
-        this.usage = StaticDrawUsage;
-        this.updateRange = {
-            offset: 0,
-            count: -1
-        };
-        this.version = 0;
-        this.uuid = generateUUID();
     }
 }
 

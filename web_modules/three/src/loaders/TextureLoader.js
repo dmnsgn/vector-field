@@ -14,6 +14,9 @@ import '../math/ColorManagement.js';
 import './LoadingManager.js';
 
 class TextureLoader extends Loader {
+    constructor(manager){
+        super(manager);
+    }
     load(url, onLoad, onProgress, onError) {
         const texture = new Texture();
         const loader = new ImageLoader(this.manager);
@@ -27,9 +30,6 @@ class TextureLoader extends Loader {
             }
         }, onProgress, onError);
         return texture;
-    }
-    constructor(manager){
-        super(manager);
     }
 }
 

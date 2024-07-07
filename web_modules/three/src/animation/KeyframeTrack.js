@@ -8,6 +8,14 @@ import '../math/Quaternion.js';
 import '../math/MathUtils.js';
 
 class KeyframeTrack {
+    constructor(name, times, values, interpolation){
+        if (name === undefined) throw new Error('THREE.KeyframeTrack: track name is undefined');
+        if (times === undefined || times.length === 0) throw new Error('THREE.KeyframeTrack: no keyframes in track named ' + name);
+        this.name = name;
+        this.times = convertArray(times, this.TimeBufferType);
+        this.values = convertArray(values, this.ValueBufferType);
+        this.setInterpolation(interpolation || this.DefaultInterpolation);
+    }
     // Serialization (in static context, because of constructor invocation
     // and automatic invocation of .toJSON):
     static toJSON(track) {
@@ -231,14 +239,6 @@ class KeyframeTrack {
         // Interpolant argument to constructor is not saved, so copy the factory method directly.
         track.createInterpolant = this.createInterpolant;
         return track;
-    }
-    constructor(name, times, values, interpolation){
-        if (name === undefined) throw new Error('THREE.KeyframeTrack: track name is undefined');
-        if (times === undefined || times.length === 0) throw new Error('THREE.KeyframeTrack: no keyframes in track named ' + name);
-        this.name = name;
-        this.times = convertArray(times, this.TimeBufferType);
-        this.values = convertArray(values, this.ValueBufferType);
-        this.setInterpolation(interpolation || this.DefaultInterpolation);
     }
 }
 KeyframeTrack.prototype.TimeBufferType = Float32Array;

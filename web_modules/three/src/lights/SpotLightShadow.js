@@ -19,6 +19,11 @@ import '../math/Euler.js';
 import '../core/Layers.js';
 
 class SpotLightShadow extends LightShadow {
+    constructor(){
+        super(new PerspectiveCamera(50, 1, 0.5, 500));
+        this.isSpotLightShadow = true;
+        this.focus = 1;
+    }
     updateMatrices(light) {
         const camera = this.camera;
         const fov = RAD2DEG * 2 * light.angle * this.focus;
@@ -36,11 +41,6 @@ class SpotLightShadow extends LightShadow {
         super.copy(source);
         this.focus = source.focus;
         return this;
-    }
-    constructor(){
-        super(new PerspectiveCamera(50, 1, 0.5, 500));
-        this.isSpotLightShadow = true;
-        this.focus = 1;
     }
 }
 

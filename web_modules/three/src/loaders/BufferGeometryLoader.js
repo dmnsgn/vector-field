@@ -25,6 +25,9 @@ import './Cache.js';
 import './LoadingManager.js';
 
 class BufferGeometryLoader extends Loader {
+    constructor(manager){
+        super(manager);
+    }
     load(url, onLoad, onProgress, onError) {
         const scope = this;
         const loader = new FileLoader(scope.manager);
@@ -86,10 +89,6 @@ class BufferGeometryLoader extends Loader {
             }
             if (attribute.name !== undefined) bufferAttribute.name = attribute.name;
             if (attribute.usage !== undefined) bufferAttribute.setUsage(attribute.usage);
-            if (attribute.updateRange !== undefined) {
-                bufferAttribute.updateRange.offset = attribute.updateRange.offset;
-                bufferAttribute.updateRange.count = attribute.updateRange.count;
-            }
             geometry.setAttribute(key, bufferAttribute);
         }
         const morphAttributes = json.data.morphAttributes;
@@ -135,9 +134,6 @@ class BufferGeometryLoader extends Loader {
         if (json.name) geometry.name = json.name;
         if (json.userData) geometry.userData = json.userData;
         return geometry;
-    }
-    constructor(manager){
-        super(manager);
     }
 }
 

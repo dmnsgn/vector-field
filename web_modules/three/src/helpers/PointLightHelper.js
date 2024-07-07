@@ -25,31 +25,6 @@ import '../math/Color.js';
 import '../math/ColorManagement.js';
 
 class PointLightHelper extends Mesh {
-    dispose() {
-        this.geometry.dispose();
-        this.material.dispose();
-    }
-    update() {
-        this.light.updateWorldMatrix(true, false);
-        if (this.color !== undefined) {
-            this.material.color.set(this.color);
-        } else {
-            this.material.color.copy(this.light.color);
-        }
-    /*
-		const d = this.light.distance;
-
-		if ( d === 0.0 ) {
-
-			this.lightDistance.visible = false;
-
-		} else {
-
-			this.lightDistance.visible = true;
-			this.lightDistance.scale.set( d, d, d );
-
-		}
-		*/ }
     constructor(light, sphereSize, color){
         const geometry = new SphereGeometry(sphereSize, 4, 2);
         const material = new MeshBasicMaterial({
@@ -86,6 +61,31 @@ class PointLightHelper extends Mesh {
 
 	this.add( this.lightDistance );
 	*/ }
+    dispose() {
+        this.geometry.dispose();
+        this.material.dispose();
+    }
+    update() {
+        this.light.updateWorldMatrix(true, false);
+        if (this.color !== undefined) {
+            this.material.color.set(this.color);
+        } else {
+            this.material.color.copy(this.light.color);
+        }
+    /*
+		const d = this.light.distance;
+
+		if ( d === 0.0 ) {
+
+			this.lightDistance.visible = false;
+
+		} else {
+
+			this.lightDistance.visible = true;
+			this.lightDistance.scale.set( d, d, d );
+
+		}
+		*/ }
 }
 
 export { PointLightHelper };

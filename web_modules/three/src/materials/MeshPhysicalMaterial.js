@@ -5,95 +5,14 @@ import { clamp } from '../math/MathUtils.js';
 import '../constants.js';
 import './Material.js';
 import '../core/EventDispatcher.js';
+import '../math/Euler.js';
+import '../math/Quaternion.js';
+import '../math/Matrix4.js';
+import '../math/Vector3.js';
 import '../math/ColorManagement.js';
 import '../math/Matrix3.js';
 
 class MeshPhysicalMaterial extends MeshStandardMaterial {
-    get anisotropy() {
-        return this._anisotropy;
-    }
-    set anisotropy(value) {
-        if (this._anisotropy > 0 !== value > 0) {
-            this.version++;
-        }
-        this._anisotropy = value;
-    }
-    get clearcoat() {
-        return this._clearcoat;
-    }
-    set clearcoat(value) {
-        if (this._clearcoat > 0 !== value > 0) {
-            this.version++;
-        }
-        this._clearcoat = value;
-    }
-    get iridescence() {
-        return this._iridescence;
-    }
-    set iridescence(value) {
-        if (this._iridescence > 0 !== value > 0) {
-            this.version++;
-        }
-        this._iridescence = value;
-    }
-    get sheen() {
-        return this._sheen;
-    }
-    set sheen(value) {
-        if (this._sheen > 0 !== value > 0) {
-            this.version++;
-        }
-        this._sheen = value;
-    }
-    get transmission() {
-        return this._transmission;
-    }
-    set transmission(value) {
-        if (this._transmission > 0 !== value > 0) {
-            this.version++;
-        }
-        this._transmission = value;
-    }
-    copy(source) {
-        super.copy(source);
-        this.defines = {
-            'STANDARD': '',
-            'PHYSICAL': ''
-        };
-        this.anisotropy = source.anisotropy;
-        this.anisotropyRotation = source.anisotropyRotation;
-        this.anisotropyMap = source.anisotropyMap;
-        this.clearcoat = source.clearcoat;
-        this.clearcoatMap = source.clearcoatMap;
-        this.clearcoatRoughness = source.clearcoatRoughness;
-        this.clearcoatRoughnessMap = source.clearcoatRoughnessMap;
-        this.clearcoatNormalMap = source.clearcoatNormalMap;
-        this.clearcoatNormalScale.copy(source.clearcoatNormalScale);
-        this.ior = source.ior;
-        this.iridescence = source.iridescence;
-        this.iridescenceMap = source.iridescenceMap;
-        this.iridescenceIOR = source.iridescenceIOR;
-        this.iridescenceThicknessRange = [
-            ...source.iridescenceThicknessRange
-        ];
-        this.iridescenceThicknessMap = source.iridescenceThicknessMap;
-        this.sheen = source.sheen;
-        this.sheenColor.copy(source.sheenColor);
-        this.sheenColorMap = source.sheenColorMap;
-        this.sheenRoughness = source.sheenRoughness;
-        this.sheenRoughnessMap = source.sheenRoughnessMap;
-        this.transmission = source.transmission;
-        this.transmissionMap = source.transmissionMap;
-        this.thickness = source.thickness;
-        this.thicknessMap = source.thicknessMap;
-        this.attenuationDistance = source.attenuationDistance;
-        this.attenuationColor.copy(source.attenuationColor);
-        this.specularIntensity = source.specularIntensity;
-        this.specularIntensityMap = source.specularIntensityMap;
-        this.specularColor.copy(source.specularColor);
-        this.specularColorMap = source.specularColorMap;
-        return this;
-    }
     constructor(parameters){
         super();
         this.isMeshPhysicalMaterial = true;
@@ -140,10 +59,106 @@ class MeshPhysicalMaterial extends MeshStandardMaterial {
         this.specularColorMap = null;
         this._anisotropy = 0;
         this._clearcoat = 0;
+        this._dispersion = 0;
         this._iridescence = 0;
         this._sheen = 0.0;
         this._transmission = 0;
         this.setValues(parameters);
+    }
+    get anisotropy() {
+        return this._anisotropy;
+    }
+    set anisotropy(value) {
+        if (this._anisotropy > 0 !== value > 0) {
+            this.version++;
+        }
+        this._anisotropy = value;
+    }
+    get clearcoat() {
+        return this._clearcoat;
+    }
+    set clearcoat(value) {
+        if (this._clearcoat > 0 !== value > 0) {
+            this.version++;
+        }
+        this._clearcoat = value;
+    }
+    get iridescence() {
+        return this._iridescence;
+    }
+    set iridescence(value) {
+        if (this._iridescence > 0 !== value > 0) {
+            this.version++;
+        }
+        this._iridescence = value;
+    }
+    get dispersion() {
+        return this._dispersion;
+    }
+    set dispersion(value) {
+        if (this._dispersion > 0 !== value > 0) {
+            this.version++;
+        }
+        this._dispersion = value;
+    }
+    get sheen() {
+        return this._sheen;
+    }
+    set sheen(value) {
+        if (this._sheen > 0 !== value > 0) {
+            this.version++;
+        }
+        this._sheen = value;
+    }
+    get transmission() {
+        return this._transmission;
+    }
+    set transmission(value) {
+        if (this._transmission > 0 !== value > 0) {
+            this.version++;
+        }
+        this._transmission = value;
+    }
+    copy(source) {
+        super.copy(source);
+        this.defines = {
+            'STANDARD': '',
+            'PHYSICAL': ''
+        };
+        this.anisotropy = source.anisotropy;
+        this.anisotropyRotation = source.anisotropyRotation;
+        this.anisotropyMap = source.anisotropyMap;
+        this.clearcoat = source.clearcoat;
+        this.clearcoatMap = source.clearcoatMap;
+        this.clearcoatRoughness = source.clearcoatRoughness;
+        this.clearcoatRoughnessMap = source.clearcoatRoughnessMap;
+        this.clearcoatNormalMap = source.clearcoatNormalMap;
+        this.clearcoatNormalScale.copy(source.clearcoatNormalScale);
+        this.dispersion = source.dispersion;
+        this.ior = source.ior;
+        this.iridescence = source.iridescence;
+        this.iridescenceMap = source.iridescenceMap;
+        this.iridescenceIOR = source.iridescenceIOR;
+        this.iridescenceThicknessRange = [
+            ...source.iridescenceThicknessRange
+        ];
+        this.iridescenceThicknessMap = source.iridescenceThicknessMap;
+        this.sheen = source.sheen;
+        this.sheenColor.copy(source.sheenColor);
+        this.sheenColorMap = source.sheenColorMap;
+        this.sheenRoughness = source.sheenRoughness;
+        this.sheenRoughnessMap = source.sheenRoughnessMap;
+        this.transmission = source.transmission;
+        this.transmissionMap = source.transmissionMap;
+        this.thickness = source.thickness;
+        this.thicknessMap = source.thicknessMap;
+        this.attenuationDistance = source.attenuationDistance;
+        this.attenuationColor.copy(source.attenuationColor);
+        this.specularIntensity = source.specularIntensity;
+        this.specularIntensityMap = source.specularIntensityMap;
+        this.specularColor.copy(source.specularColor);
+        this.specularColorMap = source.specularColorMap;
+        return this;
     }
 }
 

@@ -15,6 +15,9 @@ import '../extras/ImageUtils.js';
 import '../math/ColorManagement.js';
 
 class CubeTextureLoader extends Loader {
+    constructor(manager){
+        super(manager);
+    }
     load(urls, onLoad, onProgress, onError) {
         const texture = new CubeTexture();
         texture.colorSpace = SRGBColorSpace;
@@ -36,9 +39,6 @@ class CubeTextureLoader extends Loader {
             loadTexture(i);
         }
         return texture;
-    }
-    constructor(manager){
-        super(manager);
     }
 }
 

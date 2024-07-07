@@ -3,6 +3,12 @@ var worldpos_vertex = /* glsl */ `
 
 	vec4 worldPosition = vec4( transformed, 1.0 );
 
+	#ifdef USE_BATCHING
+
+		worldPosition = batchingMatrix * worldPosition;
+
+	#endif
+
 	#ifdef USE_INSTANCING
 
 		worldPosition = instanceMatrix * worldPosition;

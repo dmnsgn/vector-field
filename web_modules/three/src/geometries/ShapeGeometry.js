@@ -20,7 +20,7 @@ import '../extras/DataUtils.js';
 import '../extras/core/Path.js';
 import '../extras/core/CurvePath.js';
 import '../extras/core/Curve.js';
-import '../../../_chunks/Curves-1010459e.js';
+import '../../../_chunks/Curves-cjyKFada.js';
 import '../extras/curves/ArcCurve.js';
 import '../extras/curves/EllipseCurve.js';
 import '../extras/curves/CatmullRomCurve3.js';
@@ -35,24 +35,6 @@ import '../extras/curves/SplineCurve.js';
 import '../extras/Earcut.js';
 
 class ShapeGeometry extends BufferGeometry {
-    copy(source) {
-        super.copy(source);
-        this.parameters = Object.assign({}, source.parameters);
-        return this;
-    }
-    toJSON() {
-        const data = super.toJSON();
-        const shapes = this.parameters.shapes;
-        return toJSON(shapes, data);
-    }
-    static fromJSON(data, shapes) {
-        const geometryShapes = [];
-        for(let j = 0, jl = data.shapes.length; j < jl; j++){
-            const shape = shapes[data.shapes[j]];
-            geometryShapes.push(shape);
-        }
-        return new ShapeGeometry(geometryShapes, data.curveSegments);
-    }
     constructor(shapes = new Shape([
         new Vector2(0, 0.5),
         new Vector2(-0.5, -0.5),
@@ -127,6 +109,24 @@ class ShapeGeometry extends BufferGeometry {
                 groupCount += 3;
             }
         }
+    }
+    copy(source) {
+        super.copy(source);
+        this.parameters = Object.assign({}, source.parameters);
+        return this;
+    }
+    toJSON() {
+        const data = super.toJSON();
+        const shapes = this.parameters.shapes;
+        return toJSON(shapes, data);
+    }
+    static fromJSON(data, shapes) {
+        const geometryShapes = [];
+        for(let j = 0, jl = data.shapes.length; j < jl; j++){
+            const shape = shapes[data.shapes[j]];
+            geometryShapes.push(shape);
+        }
+        return new ShapeGeometry(geometryShapes, data.curveSegments);
     }
 }
 function toJSON(shapes, data) {

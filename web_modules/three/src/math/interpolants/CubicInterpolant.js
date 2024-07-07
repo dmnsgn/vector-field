@@ -1,4 +1,4 @@
-import { WrapAroundEnding, ZeroSlopeEnding, ZeroCurvatureEnding } from '../../constants.js';
+import { ZeroCurvatureEnding, WrapAroundEnding, ZeroSlopeEnding } from '../../constants.js';
 import { Interpolant } from '../Interpolant.js';
 
 /**
@@ -8,6 +8,17 @@ import { Interpolant } from '../Interpolant.js';
  * at each sample position to the linear slope between neighboring positions
  * over their parameter interval.
  */ class CubicInterpolant extends Interpolant {
+    constructor(parameterPositions, sampleValues, sampleSize, resultBuffer){
+        super(parameterPositions, sampleValues, sampleSize, resultBuffer);
+        this._weightPrev = -0;
+        this._offsetPrev = -0;
+        this._weightNext = -0;
+        this._offsetNext = -0;
+        this.DefaultSettings_ = {
+            endingStart: ZeroCurvatureEnding,
+            endingEnd: ZeroCurvatureEnding
+        };
+    }
     intervalChanged_(i1, t0, t1) {
         const pp = this.parameterPositions;
         let iPrev = i1 - 2, iNext = i1 + 1, tPrev = pp[iPrev], tNext = pp[iNext];
@@ -65,17 +76,6 @@ import { Interpolant } from '../Interpolant.js';
             result[i] = sP * values[oP + i] + s0 * values[o0 + i] + s1 * values[o1 + i] + sN * values[oN + i];
         }
         return result;
-    }
-    constructor(parameterPositions, sampleValues, sampleSize, resultBuffer){
-        super(parameterPositions, sampleValues, sampleSize, resultBuffer);
-        this._weightPrev = -0;
-        this._offsetPrev = -0;
-        this._weightNext = -0;
-        this._offsetNext = -0;
-        this.DefaultSettings_ = {
-            endingStart: ZeroCurvatureEnding,
-            endingEnd: ZeroCurvatureEnding
-        };
     }
 }
 

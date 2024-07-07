@@ -10,18 +10,7 @@ import '../utils.js';
 import '../math/ColorManagement.js';
 
 class DepthTexture extends Texture {
-    copy(source) {
-        super.copy(source);
-        this.compareFunction = source.compareFunction;
-        return this;
-    }
-    toJSON(meta) {
-        const data = super.toJSON(meta);
-        if (this.compareFunction !== null) data.compareFunction = this.compareFunction;
-        return data;
-    }
-    constructor(width, height, type, mapping, wrapS, wrapT, magFilter, minFilter, anisotropy, format){
-        format = format !== undefined ? format : DepthFormat;
+    constructor(width, height, type, mapping, wrapS, wrapT, magFilter, minFilter, anisotropy, format = DepthFormat){
         if (format !== DepthFormat && format !== DepthStencilFormat) {
             throw new Error('DepthTexture format must be either THREE.DepthFormat or THREE.DepthStencilFormat');
         }
@@ -38,6 +27,16 @@ class DepthTexture extends Texture {
         this.flipY = false;
         this.generateMipmaps = false;
         this.compareFunction = null;
+    }
+    copy(source) {
+        super.copy(source);
+        this.compareFunction = source.compareFunction;
+        return this;
+    }
+    toJSON(meta) {
+        const data = super.toJSON(meta);
+        if (this.compareFunction !== null) data.compareFunction = this.compareFunction;
+        return data;
     }
 }
 

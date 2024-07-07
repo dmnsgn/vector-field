@@ -1,4 +1,21 @@
 class Matrix3 {
+    constructor(n11, n12, n13, n21, n22, n23, n31, n32, n33){
+        Matrix3.prototype.isMatrix3 = true;
+        this.elements = [
+            1,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            1
+        ];
+        if (n11 !== undefined) {
+            this.set(n11, n12, n13, n21, n22, n23, n31, n32, n33);
+        }
+    }
     set(n11, n12, n13, n21, n22, n23, n31, n32, n33) {
         const te = this.elements;
         te[0] = n11;
@@ -203,23 +220,6 @@ class Matrix3 {
     }
     clone() {
         return new this.constructor().fromArray(this.elements);
-    }
-    constructor(n11, n12, n13, n21, n22, n23, n31, n32, n33){
-        Matrix3.prototype.isMatrix3 = true;
-        this.elements = [
-            1,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            1
-        ];
-        if (n11 !== undefined) {
-            this.set(n11, n12, n13, n21, n22, n23, n31, n32, n33);
-        }
     }
 }
 const _m3 = /*@__PURE__*/ new Matrix3();

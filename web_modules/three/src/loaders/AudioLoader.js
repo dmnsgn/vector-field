@@ -5,6 +5,9 @@ import './Cache.js';
 import './LoadingManager.js';
 
 class AudioLoader extends Loader {
+    constructor(manager){
+        super(manager);
+    }
     load(url, onLoad, onProgress, onError) {
         const scope = this;
         const loader = new FileLoader(this.manager);
@@ -20,7 +23,7 @@ class AudioLoader extends Loader {
                 const context = AudioContext.getContext();
                 context.decodeAudioData(bufferCopy, function(audioBuffer) {
                     onLoad(audioBuffer);
-                }, handleError);
+                }).catch(handleError);
             } catch (e) {
                 handleError(e);
             }
@@ -33,9 +36,6 @@ class AudioLoader extends Loader {
             }
             scope.manager.itemError(url);
         }
-    }
-    constructor(manager){
-        super(manager);
     }
 }
 

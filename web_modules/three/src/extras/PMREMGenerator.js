@@ -13,8 +13,9 @@ import { BoxGeometry } from '../geometries/BoxGeometry.js';
 import '../math/Vector2.js';
 import '../math/MathUtils.js';
 import './DataUtils.js';
-import '../math/Box3.js';
+import '../utils.js';
 import '../math/Quaternion.js';
+import '../math/Box3.js';
 import '../core/EventDispatcher.js';
 import '../math/Sphere.js';
 import '../core/Object3D.js';
@@ -22,7 +23,6 @@ import '../math/Matrix4.js';
 import '../math/Euler.js';
 import '../core/Layers.js';
 import '../math/Matrix3.js';
-import '../utils.js';
 import '../math/Ray.js';
 import '../math/Triangle.js';
 import '../materials/Material.js';
@@ -56,22 +56,25 @@ const MAX_SAMPLES = 20;
 const _flatCamera = /*@__PURE__*/ new OrthographicCamera();
 const _clearColor = /*@__PURE__*/ new Color();
 let _oldTarget = null;
+let _oldActiveCubeFace = 0;
+let _oldActiveMipmapLevel = 0;
+let _oldXrEnabled = false;
 // Golden Ratio
 const PHI = (1 + Math.sqrt(5)) / 2;
 const INV_PHI = 1 / PHI;
 // Vertices of a dodecahedron (except the opposites, which represent the
 // same axis), used as axis directions evenly spread on a sphere.
 const _axisDirections = [
-    /*@__PURE__*/ new Vector3(1, 1, 1),
-    /*@__PURE__*/ new Vector3(-1, 1, 1),
-    /*@__PURE__*/ new Vector3(1, 1, -1),
-    /*@__PURE__*/ new Vector3(-1, 1, -1),
-    /*@__PURE__*/ new Vector3(0, PHI, INV_PHI),
-    /*@__PURE__*/ new Vector3(0, PHI, -INV_PHI),
-    /*@__PURE__*/ new Vector3(INV_PHI, 0, PHI),
-    /*@__PURE__*/ new Vector3(-INV_PHI, 0, PHI),
+    /*@__PURE__*/ new Vector3(-PHI, INV_PHI, 0),
     /*@__PURE__*/ new Vector3(PHI, INV_PHI, 0),
-    /*@__PURE__*/ new Vector3(-PHI, INV_PHI, 0)
+    /*@__PURE__*/ new Vector3(-INV_PHI, 0, PHI),
+    /*@__PURE__*/ new Vector3(INV_PHI, 0, PHI),
+    /*@__PURE__*/ new Vector3(0, PHI, -INV_PHI),
+    /*@__PURE__*/ new Vector3(0, PHI, INV_PHI),
+    /*@__PURE__*/ new Vector3(-1, 1, -1),
+    /*@__PURE__*/ new Vector3(1, 1, -1),
+    /*@__PURE__*/ new Vector3(-1, 1, 1),
+    /*@__PURE__*/ new Vector3(1, 1, 1)
 ];
 /**
  * This class generates a Prefiltered, Mipmapped Radiance Environment Map
@@ -87,6 +90,19 @@ const _axisDirections = [
  * Paper: Fast, Accurate Image-Based Lighting
  * https://drive.google.com/file/d/15y8r_UpKlU9SvV4ILb0C3qCPecS8pvLz/view
 */ class PMREMGenerator {
+    constructor(renderer){
+        this._renderer = renderer;
+        this._pingPongRenderTarget = null;
+        this._lodMax = 0;
+        this._cubeSize = 0;
+        this._lodPlanes = [];
+        this._sizeLods = [];
+        this._sigmas = [];
+        this._blurMaterial = null;
+        this._cubemapMaterial = null;
+        this._equirectMaterial = null;
+        this._compileMaterial(this._blurMaterial);
+    }
     /**
 	 * Generates a PMREM from a supplied Scene, which can be faster than using an
 	 * image if networking bandwidth is low. Optional sigma specifies a blur radius
@@ -98,6 +114,10 @@ const _axisDirections = [
         if (near === void 0) near = 0.1;
         if (far === void 0) far = 100;
         _oldTarget = this._renderer.getRenderTarget();
+        _oldActiveCubeFace = this._renderer.getActiveCubeFace();
+        _oldActiveMipmapLevel = this._renderer.getActiveMipmapLevel();
+        _oldXrEnabled = this._renderer.xr.enabled;
+        this._renderer.xr.enabled = false;
         this._setSize(256);
         const cubeUVRenderTarget = this._allocateTargets();
         cubeUVRenderTarget.depthBuffer = true;
@@ -113,6 +133,7 @@ const _axisDirections = [
 	 * Generates a PMREM from an equirectangular texture, which can be either LDR
 	 * or HDR. The ideal input image size is 1k (1024 x 512),
 	 * as this matches best with the 256 x 256 cubemap output.
+	 * The smallest supported equirectangular image size is 64 x 32.
 	 */ fromEquirectangular(equirectangular, renderTarget) {
         if (renderTarget === void 0) renderTarget = null;
         return this._fromTexture(equirectangular, renderTarget);
@@ -121,6 +142,7 @@ const _axisDirections = [
 	 * Generates a PMREM from an cubemap texture, which can be either LDR
 	 * or HDR. The ideal input cube size is 256 x 256,
 	 * as this matches best with the 256 x 256 cubemap output.
+	 * The smallest supported cube size is 16 x 16.
 	 */ fromCubemap(cubemap, renderTarget) {
         if (renderTarget === void 0) renderTarget = null;
         return this._fromTexture(cubemap, renderTarget);
@@ -165,7 +187,8 @@ const _axisDirections = [
         }
     }
     _cleanup(outputTarget) {
-        this._renderer.setRenderTarget(_oldTarget);
+        this._renderer.setRenderTarget(_oldTarget, _oldActiveCubeFace, _oldActiveMipmapLevel);
+        this._renderer.xr.enabled = _oldXrEnabled;
         outputTarget.scissorTest = false;
         _setViewport(outputTarget, 0, 0, outputTarget.width, outputTarget.height);
     }
@@ -176,6 +199,10 @@ const _axisDirections = [
             this._setSize(texture.image.width / 4);
         }
         _oldTarget = this._renderer.getRenderTarget();
+        _oldActiveCubeFace = this._renderer.getActiveCubeFace();
+        _oldActiveMipmapLevel = this._renderer.getActiveMipmapLevel();
+        _oldXrEnabled = this._renderer.xr.enabled;
+        this._renderer.xr.enabled = false;
         const cubeUVRenderTarget = renderTarget || this._allocateTargets();
         this._textureToCubeUV(texture, cubeUVRenderTarget);
         this._applyPMREM(cubeUVRenderTarget);
@@ -200,8 +227,8 @@ const _axisDirections = [
                 this._dispose();
             }
             this._pingPongRenderTarget = _createRenderTarget(width, height, params);
-            const { _lodMax  } = this;
-            ({ sizeLods: this._sizeLods , lodPlanes: this._lodPlanes , sigmas: this._sigmas  } = _createPlanes(_lodMax));
+            const { _lodMax } = this;
+            ({ sizeLods: this._sizeLods, lodPlanes: this._lodPlanes, sigmas: this._sigmas } = _createPlanes(_lodMax));
             this._blurMaterial = _getBlurShader(_lodMax, width, height);
         }
         return cubeUVRenderTarget;
@@ -307,9 +334,10 @@ const _axisDirections = [
         const renderer = this._renderer;
         const autoClear = renderer.autoClear;
         renderer.autoClear = false;
-        for(let i = 1; i < this._lodPlanes.length; i++){
+        const n = this._lodPlanes.length;
+        for(let i = 1; i < n; i++){
             const sigma = Math.sqrt(this._sigmas[i] * this._sigmas[i] - this._sigmas[i - 1] * this._sigmas[i - 1]);
-            const poleAxis = _axisDirections[(i - 1) % _axisDirections.length];
+            const poleAxis = _axisDirections[(n - i - 1) % _axisDirections.length];
             this._blur(cubeUVRenderTarget, i - 1, i, sigma, poleAxis);
         }
         renderer.autoClear = autoClear;
@@ -364,7 +392,7 @@ const _axisDirections = [
         if (poleAxis) {
             blurUniforms['poleAxis'].value = poleAxis;
         }
-        const { _lodMax  } = this;
+        const { _lodMax } = this;
         blurUniforms['dTheta'].value = radiansPerPixel;
         blurUniforms['mipInt'].value = _lodMax - lodIn;
         const outputSize = this._sizeLods[lodOut];
@@ -373,19 +401,6 @@ const _axisDirections = [
         _setViewport(targetOut, x, y, 3 * outputSize, 2 * outputSize);
         renderer.setRenderTarget(targetOut);
         renderer.render(blurMesh, _flatCamera);
-    }
-    constructor(renderer){
-        this._renderer = renderer;
-        this._pingPongRenderTarget = null;
-        this._lodMax = 0;
-        this._cubeSize = 0;
-        this._lodPlanes = [];
-        this._sizeLods = [];
-        this._sigmas = [];
-        this._blurMaterial = null;
-        this._cubemapMaterial = null;
-        this._equirectMaterial = null;
-        this._compileMaterial(this._blurMaterial);
     }
 }
 function _createPlanes(lodMax) {

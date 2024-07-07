@@ -18,6 +18,15 @@
  * 		http://www.oodesign.com/template-method-pattern.html
  *
  */ class Interpolant {
+    constructor(parameterPositions, sampleValues, sampleSize, resultBuffer){
+        this.parameterPositions = parameterPositions;
+        this._cachedIndex = 0;
+        this.resultBuffer = resultBuffer !== undefined ? resultBuffer : new sampleValues.constructor(sampleSize);
+        this.sampleValues = sampleValues;
+        this.valueSize = sampleSize;
+        this.settings = null;
+        this.DefaultSettings_ = {};
+    }
     evaluate(t) {
         const pp = this.parameterPositions;
         let i1 = this._cachedIndex, t1 = pp[i1], t0 = pp[i1 - 1];
@@ -124,15 +133,6 @@
     }
     intervalChanged_() {
     // empty
-    }
-    constructor(parameterPositions, sampleValues, sampleSize, resultBuffer){
-        this.parameterPositions = parameterPositions;
-        this._cachedIndex = 0;
-        this.resultBuffer = resultBuffer !== undefined ? resultBuffer : new sampleValues.constructor(sampleSize);
-        this.sampleValues = sampleValues;
-        this.valueSize = sampleSize;
-        this.settings = null;
-        this.DefaultSettings_ = {};
     }
 }
 

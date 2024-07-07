@@ -1,13 +1,22 @@
 import { Vector3 } from '../math/Vector3.js';
 import { BufferAttribute } from './BufferAttribute.js';
-import { normalize, denormalize } from '../math/MathUtils.js';
+import { denormalize, normalize } from '../math/MathUtils.js';
 import '../math/Quaternion.js';
 import '../math/Vector2.js';
 import '../constants.js';
 import '../extras/DataUtils.js';
+import '../utils.js';
 
 const _vector = /*@__PURE__*/ new Vector3();
 class InterleavedBufferAttribute {
+    constructor(interleavedBuffer, itemSize, offset, normalized = false){
+        this.isInterleavedBufferAttribute = true;
+        this.name = '';
+        this.data = interleavedBuffer;
+        this.itemSize = itemSize;
+        this.offset = offset;
+        this.normalized = normalized;
+    }
     get count() {
         return this.data.count;
     }
@@ -39,6 +48,16 @@ class InterleavedBufferAttribute {
             _vector.transformDirection(m);
             this.setXYZ(i, _vector.x, _vector.y, _vector.z);
         }
+        return this;
+    }
+    getComponent(index, component) {
+        let value = this.array[index * this.data.stride + this.offset + component];
+        if (this.normalized) value = denormalize(value, this.array);
+        return value;
+    }
+    setComponent(index, component, value) {
+        if (this.normalized) value = normalize(value, this.array);
+        this.data.array[index * this.data.stride + this.offset + component] = value;
         return this;
     }
     setX(index, x) {
@@ -171,14 +190,6 @@ class InterleavedBufferAttribute {
                 normalized: this.normalized
             };
         }
-    }
-    constructor(interleavedBuffer, itemSize, offset, normalized = false){
-        this.isInterleavedBufferAttribute = true;
-        this.name = '';
-        this.data = interleavedBuffer;
-        this.itemSize = itemSize;
-        this.offset = offset;
-        this.normalized = normalized;
     }
 }
 

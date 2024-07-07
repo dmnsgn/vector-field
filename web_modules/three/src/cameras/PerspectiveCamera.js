@@ -1,8 +1,9 @@
 import { Camera } from './Camera.js';
 import { RAD2DEG, DEG2RAD } from '../math/MathUtils.js';
+import { Vector2 } from '../math/Vector2.js';
+import { Vector3 } from '../math/Vector3.js';
 import '../constants.js';
 import '../math/Matrix4.js';
-import '../math/Vector3.js';
 import '../math/Quaternion.js';
 import '../core/Object3D.js';
 import '../core/EventDispatcher.js';
@@ -10,7 +11,25 @@ import '../math/Euler.js';
 import '../core/Layers.js';
 import '../math/Matrix3.js';
 
+const _v3 = /*@__PURE__*/ new Vector3();
+const _minTarget = /*@__PURE__*/ new Vector2();
+const _maxTarget = /*@__PURE__*/ new Vector2();
 class PerspectiveCamera extends Camera {
+    constructor(fov = 50, aspect = 1, near = 0.1, far = 2000){
+        super();
+        this.isPerspectiveCamera = true;
+        this.type = 'PerspectiveCamera';
+        this.fov = fov;
+        this.zoom = 1;
+        this.near = near;
+        this.far = far;
+        this.focus = 10;
+        this.aspect = aspect;
+        this.view = null;
+        this.filmGauge = 35; // width of the film (default in millimeters)
+        this.filmOffset = 0; // horizontal film offset (same unit as gauge)
+        this.updateProjectionMatrix();
+    }
     copy(source, recursive) {
         super.copy(source, recursive);
         this.fov = source.fov;
@@ -52,6 +71,22 @@ class PerspectiveCamera extends Camera {
     getFilmHeight() {
         // film not completely covered in landscape format (aspect > 1)
         return this.filmGauge / Math.max(this.aspect, 1);
+    }
+    /**
+	 * Computes the 2D bounds of the camera's viewable rectangle at a given distance along the viewing direction.
+	 * Sets minTarget and maxTarget to the coordinates of the lower-left and upper-right corners of the view rectangle.
+	 */ getViewBounds(distance, minTarget, maxTarget) {
+        _v3.set(-1, -1, 0.5).applyMatrix4(this.projectionMatrixInverse);
+        minTarget.set(_v3.x, _v3.y).multiplyScalar(-distance / _v3.z);
+        _v3.set(1, 1, 0.5).applyMatrix4(this.projectionMatrixInverse);
+        maxTarget.set(_v3.x, _v3.y).multiplyScalar(-distance / _v3.z);
+    }
+    /**
+	 * Computes the width and height of the camera's viewable rectangle at a given distance along the viewing direction.
+	 * Copies the result into the target Vector2, where x is width and y is height.
+	 */ getViewSize(distance, target) {
+        this.getViewBounds(distance, _minTarget, _maxTarget);
+        return target.subVectors(_maxTarget, _minTarget);
     }
     /**
 	 * Sets an offset in a larger frustum. This is useful for multi-window or
@@ -146,21 +181,6 @@ class PerspectiveCamera extends Camera {
         data.object.filmGauge = this.filmGauge;
         data.object.filmOffset = this.filmOffset;
         return data;
-    }
-    constructor(fov = 50, aspect = 1, near = 0.1, far = 2000){
-        super();
-        this.isPerspectiveCamera = true;
-        this.type = 'PerspectiveCamera';
-        this.fov = fov;
-        this.zoom = 1;
-        this.near = near;
-        this.far = far;
-        this.focus = 10;
-        this.aspect = aspect;
-        this.view = null;
-        this.filmGauge = 35; // width of the film (default in millimeters)
-        this.filmOffset = 0; // horizontal film offset (same unit as gauge)
-        this.updateProjectionMatrix();
     }
 }
 

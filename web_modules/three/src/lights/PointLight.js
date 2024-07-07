@@ -23,6 +23,14 @@ import '../cameras/PerspectiveCamera.js';
 import '../cameras/Camera.js';
 
 class PointLight extends Light {
+    constructor(color, intensity, distance = 0, decay = 2){
+        super(color, intensity);
+        this.isPointLight = true;
+        this.type = 'PointLight';
+        this.distance = distance;
+        this.decay = decay;
+        this.shadow = new PointLightShadow();
+    }
     get power() {
         // compute the light's luminous power (in lumens) from its intensity (in candela)
         // for an isotropic light source, luminous power (lm) = 4 π luminous intensity (cd)
@@ -41,14 +49,6 @@ class PointLight extends Light {
         this.decay = source.decay;
         this.shadow = source.shadow.clone();
         return this;
-    }
-    constructor(color, intensity, distance = 0, decay = 2){
-        super(color, intensity);
-        this.isPointLight = true;
-        this.type = 'PointLight';
-        this.distance = distance;
-        this.decay = decay;
-        this.shadow = new PointLightShadow();
     }
 }
 

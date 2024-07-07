@@ -1,5 +1,5 @@
 import { Curve } from './Curve.js';
-import { C as Curves } from '../../../../_chunks/Curves-1010459e.js';
+import { C as Curves } from '../../../../_chunks/Curves-cjyKFada.js';
 import '../../math/MathUtils.js';
 import '../../math/Vector2.js';
 import '../../math/Vector3.js';
@@ -22,6 +22,12 @@ import '../curves/SplineCurve.js';
  *	Curved Path - a curve path is simply a array of connected
  *  curves, but retains the api of a curve
  **************************************************************/ class CurvePath extends Curve {
+    constructor(){
+        super();
+        this.type = 'CurvePath';
+        this.curves = [];
+        this.autoClose = false; // Automatically closes the path
+    }
     add(curve) {
         this.curves.push(curve);
     }
@@ -151,12 +157,6 @@ import '../curves/SplineCurve.js';
             this.curves.push(new Curves[curve.type]().fromJSON(curve));
         }
         return this;
-    }
-    constructor(){
-        super();
-        this.type = 'CurvePath';
-        this.curves = [];
-        this.autoClose = false; // Automatically closes the path
     }
 }
 

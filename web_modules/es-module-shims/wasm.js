@@ -1,7 +1,6 @@
-import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
+import { B as Buffer } from '../_chunks/polyfills-CU6gNi7m.js';
 
-/* ES Module Shims Wasm 1.8.0 */ (function() {
-    const hasWindow = typeof window !== 'undefined';
+/* ES Module Shims Wasm 1.10.0 */ (function() {
     const hasDocument = typeof document !== 'undefined';
     const noop = ()=>{};
     const optionsScript = hasDocument ? document.querySelector('script[type=esms-options]') : undefined;
@@ -19,16 +18,18 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
         if (nonceElement) nonce = nonceElement.nonce || nonceElement.getAttribute('nonce');
     }
     const onerror = globalHook(esmsInitOptions.onerror || noop);
-    const onpolyfill = esmsInitOptions.onpolyfill ? globalHook(esmsInitOptions.onpolyfill) : ()=>{
-        console.log('%c^^ Module TypeError above is polyfilled and can be ignored ^^', 'font-weight:900;color:#391');
-    };
-    const { revokeBlobURLs , noLoadEventRetriggers , enforceIntegrity  } = esmsInitOptions;
+    const { revokeBlobURLs, noLoadEventRetriggers, globalLoadEventRetrigger, enforceIntegrity } = esmsInitOptions;
     function globalHook(name) {
         return typeof name === 'string' ? self[name] : name;
     }
     const enable = Array.isArray(esmsInitOptions.polyfillEnable) ? esmsInitOptions.polyfillEnable : [];
     const cssModulesEnabled = enable.includes('css-modules');
     const jsonModulesEnabled = enable.includes('json-modules');
+    const wasmModulesEnabled = enable.includes('wasm-modules');
+    const sourcePhaseEnabled = enable.includes('source-phase');
+    const onpolyfill = esmsInitOptions.onpolyfill ? globalHook(esmsInitOptions.onpolyfill) : ()=>{
+        console.log(`%c^^ Module error above is polyfilled and can be ignored ^^`, 'font-weight:900;color:#391');
+    };
     const edge = !navigator.userAgentData && !!navigator.userAgent.match(/Edge\/\d+\.\d+/);
     const baseUrl = hasDocument ? document.baseURI : `${location.protocol}//${location.host}${location.pathname.includes('/') ? location.pathname.slice(0, location.pathname.lastIndexOf('/') + 1) : location.pathname}`;
     const createBlob = (source, type)=>{
@@ -39,19 +40,21 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
             type
         }));
     };
-    let { skip  } = esmsInitOptions;
+    let { skip } = esmsInitOptions;
     if (Array.isArray(skip)) {
         const l = skip.map((s)=>new URL(s, baseUrl).href);
         skip = (s)=>l.some((i)=>i[i.length - 1] === '/' && s.startsWith(i) || s === i);
     } else if (typeof skip === 'string') {
         const r = new RegExp(skip);
         skip = (s)=>r.test(s);
+    } else if (skip instanceof RegExp) {
+        skip = (s)=>skip.test(s);
     }
-    const eoop = (err)=>setTimeout(()=>{
-            throw err;
-        });
+    const dispatchError = (error)=>self.dispatchEvent(Object.assign(new Event('error'), {
+            error
+        }));
     const throwError = (err)=>{
-        (self.reportError || hasWindow && window.safari && console.error || eoop)(err), void onerror(err);
+        (self.reportError || dispatchError)(err), void onerror(err);
     };
     function fromParent(parent) {
         return parent ? ` imported from ${parent}` : '';
@@ -77,17 +80,13 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
         }
     }
     const backslashRegEx = /\\/g;
-    function isURL(url) {
-        if (url.indexOf(':') === -1) return false;
+    function asURL(url) {
         try {
-            new URL(url);
-            return true;
-        } catch (_) {
-            return false;
-        }
+            if (url.indexOf(':') !== -1) return new URL(url).href;
+        } catch (_) {}
     }
     function resolveUrl(relUrl, parentUrl) {
-        return resolveIfNotPlainOrUrl(relUrl, parentUrl) || (isURL(relUrl) ? relUrl : resolveIfNotPlainOrUrl('./' + relUrl, parentUrl));
+        return resolveIfNotPlainOrUrl(relUrl, parentUrl) || asURL(relUrl) || resolveIfNotPlainOrUrl('./' + relUrl, parentUrl);
     }
     function resolveIfNotPlainOrUrl(relUrl, parentUrl) {
         const hIdx = parentUrl.indexOf('#'), qIdx = parentUrl.indexOf('?');
@@ -98,6 +97,9 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
             return parentUrl.slice(0, parentUrl.indexOf(':') + 1) + relUrl;
         } else if (relUrl[0] === '.' && (relUrl[1] === '/' || relUrl[1] === '.' && (relUrl[2] === '/' || relUrl.length === 2 && (relUrl += '/')) || relUrl.length === 1 && (relUrl += '/')) || relUrl[0] === '/') {
             const parentProtocol = parentUrl.slice(0, parentUrl.indexOf(':') + 1);
+            if (parentProtocol === 'blob:') {
+                throw new TypeError(`Failed to resolve module specifier "${relUrl}". Invalid relative url or base scheme isn't hierarchical.`);
+            }
             // Disabled, but these cases will give inconsistent results for deep backtracking
             //if (parentUrl[parentProtocol.length] !== '/')
             //  throw new Error('Cannot resolve');
@@ -154,13 +156,15 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
     function resolveAndComposeImportMap(json, baseUrl, parentMap) {
         const outMap = {
             imports: Object.assign({}, parentMap.imports),
-            scopes: Object.assign({}, parentMap.scopes)
+            scopes: Object.assign({}, parentMap.scopes),
+            integrity: Object.assign({}, parentMap.integrity)
         };
         if (json.imports) resolveAndComposePackages(json.imports, outMap.imports, baseUrl, parentMap);
         if (json.scopes) for(let s in json.scopes){
             const resolvedScope = resolveUrl(s, baseUrl);
             resolveAndComposePackages(json.scopes[s], outMap.scopes[resolvedScope] || (outMap.scopes[resolvedScope] = {}), baseUrl, parentMap);
         }
+        if (json.integrity) resolveAndComposeIntegrity(json.integrity, outMap.integrity, baseUrl);
         return outMap;
     }
     function getMatch(path, matchObj) {
@@ -169,7 +173,7 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
         do {
             const segment = path.slice(0, sepIndex + 1);
             if (segment in matchObj) return segment;
-        }while ((sepIndex = path.lastIndexOf('/', sepIndex - 1)) !== -1)
+        }while ((sepIndex = path.lastIndexOf('/', sepIndex - 1)) !== -1);
     }
     function applyPackages(id, packages) {
         const pkgName = getMatch(id, packages);
@@ -202,6 +206,15 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
                 continue;
             }
             console.warn(`Mapping "${p}" -> "${packages[p]}" does not resolve`);
+        }
+    }
+    function resolveAndComposeIntegrity(integrity, outIntegrity, baseUrl) {
+        for(let p in integrity){
+            const resolvedLhs = resolveIfNotPlainOrUrl(p, baseUrl) || p;
+            if ((!shimMode || !mapOverrides) && outIntegrity[resolvedLhs] && outIntegrity[resolvedLhs] !== integrity[resolvedLhs]) {
+                throw Error(`Rejected map integrity override "${resolvedLhs}" from ${outIntegrity[resolvedLhs]} to ${integrity[resolvedLhs]}.`);
+            }
+            outIntegrity[resolvedLhs] = integrity[p];
         }
     }
     let dynamicImport = !hasDocument && (0, eval)('u=>import(u)');
@@ -252,36 +265,42 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
     const supports = hasDocument && HTMLScriptElement.supports;
     let supportsImportMaps = supports && supports.name === 'supports' && supports('importmap');
     let supportsImportMeta = supportsDynamicImport;
-    const importMetaCheck = 'import.meta';
-    const cssModulesCheck = `import"x"assert{type:"css"}`;
-    const jsonModulesCheck = `import"x"assert{type:"json"}`;
+    let supportsWasmModules = false;
+    let supportsSourcePhase = false;
+    const wasmBytes = [
+        0,
+        97,
+        115,
+        109,
+        1,
+        0,
+        0,
+        0
+    ];
     let featureDetectionPromise = Promise.resolve(dynamicImportCheck).then(()=>{
         if (!supportsDynamicImport) return;
         if (!hasDocument) return Promise.all([
-            supportsImportMaps || dynamicImport(createBlob(importMetaCheck)).then(()=>supportsImportMeta = true, noop),
-            cssModulesEnabled && dynamicImport(createBlob(cssModulesCheck.replace('x', createBlob('', 'text/css')))).then(()=>supportsCssAssertions = true, noop),
-            jsonModulesEnabled && dynamicImport(createBlob(jsonModulescheck.replace('x', createBlob('{}', 'text/json')))).then(()=>supportsJsonAssertions = true, noop)
+            supportsImportMaps || dynamicImport(createBlob('import.meta')).then(()=>supportsImportMeta = true, noop),
+            cssModulesEnabled && dynamicImport(createBlob(`import"${createBlob('', 'text/css')}"with{type:"css"}`)).then(()=>supportsCssAssertions = true, noop),
+            jsonModulesEnabled && dynamicImport(createBlob(`import"${createBlob('{}', 'text/json')}"with{type:"json"}`)).then(()=>supportsJsonAssertions = true, noop),
+            wasmModulesEnabled && dynamicImport(createBlob(`import"${createBlob(new Uint8Array(wasmBytes), 'application/wasm')}"`)).then(()=>supportsWasmModules = true, noop),
+            wasmModulesEnabled && sourcePhaseEnabled && dynamicImport(createBlob(`import source x from"${createBlob(new Uint8Array(wasmBytes), 'application/wasm')}"`)).then(()=>supportsSourcePhase = true, noop)
         ]);
         return new Promise((resolve)=>{
             const iframe = document.createElement('iframe');
             iframe.style.display = 'none';
             iframe.setAttribute('nonce', nonce);
             function cb(param) {
-                let { data  } = param;
+                let { data } = param;
                 const isFeatureDetectionMessage = Array.isArray(data) && data[0] === 'esms';
-                if (!isFeatureDetectionMessage) {
-                    return;
-                }
-                supportsImportMaps = data[1];
-                supportsImportMeta = data[2];
-                supportsCssAssertions = data[3];
-                supportsJsonAssertions = data[4];
+                if (!isFeatureDetectionMessage) return;
+                [, supportsImportMaps, supportsImportMeta, supportsCssAssertions, supportsJsonAssertions, supportsWasmModules, supportsSourcePhase] = data;
                 resolve();
                 document.head.removeChild(iframe);
                 window.removeEventListener('message', cb, false);
             }
             window.addEventListener('message', cb, false);
-            const importMapTest = `<script nonce=${nonce || ''}>b=(s,type='text/javascript')=>URL.createObjectURL(new Blob([s],{type}));document.head.appendChild(Object.assign(document.createElement('script'),{type:'importmap',nonce:"${nonce}",innerText:\`{"imports":{"x":"\${b('')}"}}\`}));Promise.all([${supportsImportMaps ? 'true,true' : `'x',b('${importMetaCheck}')`}, ${cssModulesEnabled ? `b('${cssModulesCheck}'.replace('x',b('','text/css')))` : 'false'}, ${jsonModulesEnabled ? `b('${jsonModulesCheck}'.replace('x',b('{}','text/json')))` : 'false'}].map(x =>typeof x==='string'?import(x).then(x =>!!x,()=>false):x)).then(a=>parent.postMessage(['esms'].concat(a),'*'))<${''}/script>`;
+            const importMapTest = `<script nonce=${nonce || ''}>b=(s,type='text/javascript')=>URL.createObjectURL(new Blob([s],{type}));document.head.appendChild(Object.assign(document.createElement('script'),{type:'importmap',nonce:"${nonce}",innerText:\`{"imports":{"x":"\${b('')}"}}\`}));Promise.all([${supportsImportMaps ? 'true,true' : `'x',b('import.meta')`}, ${cssModulesEnabled ? `b(\`import"\${b('','text/css')}"with{type:"css"}\`)` : 'false'}, ${jsonModulesEnabled ? `b(\`import"\${b('{}','text/json')\}"with{type:"json"}\`)` : 'false'}, ${wasmModulesEnabled ? `b(\`import"\${b(new Uint8Array(${JSON.stringify(wasmBytes)}),'application/wasm')\}"\`)` : 'false'}, ${wasmModulesEnabled && sourcePhaseEnabled ? `b(\`import source x from "\${b(new Uint8Array(${JSON.stringify(wasmBytes)}),'application/wasm')\}"\`)` : 'false'}].map(x =>typeof x==='string'?import(x).then(()=>true,()=>false):x)).then(a=>parent.postMessage(['esms'].concat(a),'*'))<${''}/script>`;
             // Safari will call onload eagerly on head injection, but we don't want the Wechat
             // path to trigger before setting srcdoc, therefore we track the timing
             let readyForOnload = false, onloadCalledWhileNotReady = false;
@@ -313,52 +332,58 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
             if (onloadCalledWhileNotReady) doOnload();
         });
     });
-    /* es-module-lexer 1.2.1 */ const A = 1 === new Uint8Array(new Uint16Array([
+    /* es-module-lexer 1.5.2 */ var ImportType;
+    !function(A) {
+        A[A.Static = 1] = "Static", A[A.Dynamic = 2] = "Dynamic", A[A.ImportMeta = 3] = "ImportMeta", A[A.StaticSourcePhase = 4] = "StaticSourcePhase", A[A.DynamicSourcePhase = 5] = "DynamicSourcePhase";
+    }(ImportType || (ImportType = {}));
+    const A = 1 === new Uint8Array(new Uint16Array([
         1
     ]).buffer)[0];
     function parse(E, g) {
         if (g === void 0) g = "@";
         if (!C) return init.then(()=>parse(E));
-        const I = E.length + 1, o = (C.__heap_base.value || C.__heap_base) + 4 * I - C.memory.buffer.byteLength;
-        o > 0 && C.memory.grow(Math.ceil(o / 65536));
-        const D = C.sa(I - 1);
-        if ((A ? B : Q)(E, new Uint16Array(C.memory.buffer, D, I)), !C.parse()) throw Object.assign(new Error(`Parse error ${g}:${E.slice(0, C.e()).split("\n").length}:${C.e() - E.lastIndexOf("\n", C.e() - 1)}`), {
+        const I = E.length + 1, w = (C.__heap_base.value || C.__heap_base) + 4 * I - C.memory.buffer.byteLength;
+        w > 0 && C.memory.grow(Math.ceil(w / 65536));
+        const K = C.sa(I - 1);
+        if ((A ? B : Q)(E, new Uint16Array(C.memory.buffer, K, I)), !C.parse()) throw Object.assign(new Error(`Parse error ${g}:${E.slice(0, C.e()).split("\n").length}:${C.e() - E.lastIndexOf("\n", C.e() - 1)}`), {
             idx: C.e()
         });
-        const K = [], k = [];
+        const o = [], D = [];
         for(; C.ri();){
-            const A = C.is(), Q = C.ie(), B = C.ai(), g = C.id(), I = C.ss(), o = C.se();
+            const A = C.is(), Q = C.ie(), B = C.it(), g = C.ai(), I = C.id(), w = C.ss(), K = C.se();
             let D;
-            C.ip() && (D = J(E.slice(-1 === g ? A - 1 : A, -1 === g ? Q + 1 : Q))), K.push({
+            C.ip() && (D = k(E.slice(-1 === I ? A - 1 : A, -1 === I ? Q + 1 : Q))), o.push({
                 n: D,
+                t: B,
                 s: A,
                 e: Q,
-                ss: I,
-                se: o,
-                d: g,
-                a: B
+                ss: w,
+                se: K,
+                d: I,
+                a: g
             });
         }
         for(; C.re();){
-            const A = C.es(), Q = C.ee(), B = C.els(), g = C.ele(), I = E.slice(A, Q), o = I[0], D = B < 0 ? void 0 : E.slice(B, g), K = D ? D[0] : "";
-            k.push({
+            const A = C.es(), Q = C.ee(), B = C.els(), g = C.ele(), I = E.slice(A, Q), w = I[0], K = B < 0 ? void 0 : E.slice(B, g), o = K ? K[0] : "";
+            D.push({
                 s: A,
                 e: Q,
                 ls: B,
                 le: g,
-                n: '"' === o || "'" === o ? J(I) : I,
-                ln: '"' === K || "'" === K ? J(D) : D
+                n: '"' === w || "'" === w ? k(I) : I,
+                ln: '"' === o || "'" === o ? k(K) : K
             });
         }
-        function J(A) {
+        function k(A) {
             try {
                 return (0, eval)(A);
             } catch (A) {}
         }
         return [
-            K,
-            k,
-            !!C.f()
+            o,
+            D,
+            !!C.f(),
+            !!C.ms()
         ];
     }
     function Q(A, Q) {
@@ -375,17 +400,17 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
         for(; C < B;)Q[C] = A.charCodeAt(C++);
     }
     let C;
-    const init = WebAssembly.compile((E = "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", "undefined" != typeof Buffer ? Buffer.from(E, "base64") : Uint8Array.from(atob(E), (A)=>A.charCodeAt(0)))).then(WebAssembly.instantiate).then((param)=>{
-        let { exports: A  } = param;
+    const init = WebAssembly.compile((E = "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", "undefined" != typeof Buffer ? Buffer.from(E, "base64") : Uint8Array.from(atob(E), (A)=>A.charCodeAt(0)))).then(WebAssembly.instantiate).then((param)=>{
+        let { exports: A } = param;
         C = A;
     });
     var E;
     async function _resolve(id, parentUrl) {
-        const urlResolved = resolveIfNotPlainOrUrl(id, parentUrl);
+        const urlResolved = resolveIfNotPlainOrUrl(id, parentUrl) || asURL(id);
         return {
             r: resolveImportMap(importMap, urlResolved || id, parentUrl) || throwUnresolved(id, parentUrl),
             // b = bare specifier
-            b: !urlResolved && !isURL(id)
+            b: !urlResolved && !asURL(id)
         };
     }
     const resolve = resolveHook ? async (id, parentUrl)=>{
@@ -394,14 +419,15 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
         if (result && result.then) result = await result;
         return result ? {
             r: result,
-            b: !resolveIfNotPlainOrUrl(id, parentUrl) && !isURL(id)
+            b: !resolveIfNotPlainOrUrl(id, parentUrl) && !asURL(id)
         } : _resolve(id, parentUrl);
     } : _resolve;
-    // importShim('mod');
-    // importShim('mod', { opts });
-    // importShim('mod', { opts }, parentUrl);
-    // importShim('mod', parentUrl);
-    async function importShim(id) {
+    // supports:
+    // import('mod');
+    // import('mod', { opts });
+    // import('mod', { opts }, parentUrl);
+    // import('mod', parentUrl);
+    async function importHandler(id) {
         for(var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++){
             args[_key - 1] = arguments[_key];
         }
@@ -416,10 +442,34 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
             if (!shimMode) acceptingImportMaps = false;
         }
         await importMapPromise;
-        return topLevelLoad((await resolve(id, parentUrl)).r, {
+        return (await resolve(id, parentUrl)).r;
+    }
+    // import()
+    async function importShim() {
+        for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
+            args[_key] = arguments[_key];
+        }
+        return topLevelLoad(await importHandler(...args), {
             credentials: 'same-origin'
         });
     }
+    // import.source()
+    if (sourcePhaseEnabled) importShim.source = async function importShimSource() {
+        for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
+            args[_key] = arguments[_key];
+        }
+        const url = await importHandler(...args);
+        const load = getOrCreateLoad(url, {
+            credentials: 'same-origin'
+        }, null, null);
+        lastLoad = undefined;
+        if (firstPolyfillLoad && !shimMode && load.n && nativelyLoaded) {
+            onpolyfill();
+            firstPolyfillLoad = false;
+        }
+        await load.f;
+        return importShim._s[load.r];
+    };
     self.importShim = importShim;
     function defaultResolve(id, parentUrl) {
         return resolveImportMap(importMap, resolveIfNotPlainOrUrl(id, parentUrl) || id, parentUrl) || throwUnresolved(id, parentUrl);
@@ -444,21 +494,60 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
         importMap = resolveAndComposeImportMap(importMapIn, baseUrl, importMap);
     };
     const registry = importShim._r = {};
-    importShim._w = {};
+    const sourceCache = importShim._s = {};
     async function loadAll(load, seen) {
-        if (load.b || seen[load.u]) return;
         seen[load.u] = 1;
         await load.L;
-        await Promise.all(load.d.map((dep)=>loadAll(dep, seen)));
-        if (!load.n) load.n = load.d.some((dep)=>dep.n);
+        await Promise.all(load.d.map((param)=>{
+            let { l: dep, s: sourcePhase } = param;
+            if (dep.b || seen[dep.u]) return;
+            if (sourcePhase) return dep.f;
+            return loadAll(dep, seen);
+        }));
+        if (!load.n) load.n = load.d.some((dep)=>dep.l.n);
     }
     let importMap = {
         imports: {},
-        scopes: {}
+        scopes: {},
+        integrity: {}
     };
     let baselinePassthrough;
     const initPromise = featureDetectionPromise.then(()=>{
-        baselinePassthrough = esmsInitOptions.polyfillEnable !== true && supportsDynamicImport && supportsImportMeta && supportsImportMaps && (!jsonModulesEnabled || supportsJsonAssertions) && (!cssModulesEnabled || supportsCssAssertions) && !importMapSrcOrLazy;
+        baselinePassthrough = esmsInitOptions.polyfillEnable !== true && supportsDynamicImport && supportsImportMeta && supportsImportMaps && (!jsonModulesEnabled || supportsJsonAssertions) && (!cssModulesEnabled || supportsCssAssertions) && (!wasmModulesEnabled || supportsWasmModules) && (!sourcePhaseEnabled || supportsSourcePhase) && !importMapSrcOrLazy;
+        if (sourcePhaseEnabled && typeof WebAssembly !== 'undefined' && !Object.getPrototypeOf(WebAssembly.Module).name) {
+            const s = Symbol();
+            const brand = (m)=>Object.defineProperty(m, s, {
+                    writable: false,
+                    configurable: false,
+                    value: 'WebAssembly.Module'
+                });
+            class AbstractModuleSource {
+                get [Symbol.toStringTag]() {
+                    if (this[s]) return this[s];
+                    throw new TypeError('Not an AbstractModuleSource');
+                }
+            }
+            const { Module: wasmModule, compile: wasmCompile, compileStreaming: wasmCompileStreaming } = WebAssembly;
+            WebAssembly.Module = Object.setPrototypeOf(Object.assign(function Module() {
+                for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
+                    args[_key] = arguments[_key];
+                }
+                return brand(new wasmModule(...args));
+            }, wasmModule), AbstractModuleSource);
+            WebAssembly.Module.prototype = Object.setPrototypeOf(wasmModule.prototype, AbstractModuleSource.prototype);
+            WebAssembly.compile = function compile() {
+                for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
+                    args[_key] = arguments[_key];
+                }
+                return wasmCompile(...args).then(brand);
+            };
+            WebAssembly.compileStreaming = function compileStreaming() {
+                for(var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++){
+                    args[_key] = arguments[_key];
+                }
+                return wasmCompileStreaming(...args).then(brand);
+            };
+        }
         if (hasDocument) {
             if (!supportsImportMaps) {
                 const supports = HTMLScriptElement.supports || ((type)=>type === 'classic' || type === 'module');
@@ -502,7 +591,7 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
     let importMapPromise = initPromise;
     let firstPolyfillLoad = true;
     let acceptingImportMaps = true;
-    async function topLevelLoad(url, fetchOpts, source, nativelyLoaded, lastStaticLoadPromise) {
+    async function topLevelLoad(url, fetchOpts, source, nativelyLoaded1, lastStaticLoadPromise) {
         if (!shimMode) acceptingImportMaps = false;
         await initPromise;
         await importMapPromise;
@@ -510,30 +599,31 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
         // early analysis opt-out - no need to even fetch if we have feature support
         if (!shimMode && baselinePassthrough) {
             // for polyfill case, only dynamic import needs a return value here, and dynamic import will never pass nativelyLoaded
-            if (nativelyLoaded) return null;
+            if (nativelyLoaded1) return null;
             await lastStaticLoadPromise;
             return dynamicImport(source ? createBlob(source) : url, {
                 errUrl: url || source
             });
         }
         const load = getOrCreateLoad(url, fetchOpts, null, source);
+        linkLoad(load, fetchOpts);
         const seen = {};
         await loadAll(load, seen);
         lastLoad = undefined;
         resolveDeps(load, seen);
         await lastStaticLoadPromise;
         if (source && !shimMode && !load.n) {
-            if (nativelyLoaded) return;
+            if (nativelyLoaded1) return;
             if (revokeBlobURLs) revokeObjectURLs(Object.keys(seen));
             return await dynamicImport(createBlob(source), {
                 errUrl: source
             });
         }
-        if (firstPolyfillLoad && !shimMode && load.n && nativelyLoaded) {
+        if (firstPolyfillLoad && !shimMode && load.n && nativelyLoaded1) {
             onpolyfill();
             firstPolyfillLoad = false;
         }
-        const module = await dynamicImport(!shimMode && !load.n && nativelyLoaded ? load.u : load.b, {
+        const module = await dynamicImport(!shimMode && !load.n && nativelyLoaded1 ? load.u : load.b, {
             errUrl: load.u
         });
         // if the top-level load is a shell, run its update function
@@ -566,7 +656,9 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
     function resolveDeps(load, seen) {
         if (load.b || !seen[load.u]) return;
         seen[load.u] = 0;
-        for (const dep of load.d)resolveDeps(dep, seen);
+        for (const { l: dep, s: sourcePhase } of load.d){
+            if (!sourcePhase) resolveDeps(dep, seen);
+        }
         const [imports, exports] = load.a;
         // "execution"
         const source = load.S;
@@ -584,25 +676,33 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
             resolvedSource += source.slice(lastIndex, originalIndex);
             lastIndex = originalIndex;
         }
-        for (const { s: start , ss: statementStart , se: statementEnd , d: dynamicImportIndex  } of imports){
-            // dependency source replacements
-            if (dynamicImportIndex === -1) {
-                let depLoad = load.d[depIndex++], blobUrl = depLoad.b, cycleShell = !blobUrl;
+        for (const { s: start, ss: statementStart, se: statementEnd, d: dynamicImportIndex, t } of imports){
+            // source phase
+            if (t === 4) {
+                let { l: depLoad } = load.d[depIndex++];
+                pushStringTo(statementStart);
+                resolvedSource += 'import ';
+                lastIndex = statementStart + 14;
+                pushStringTo(start - 1);
+                resolvedSource += `/*${source.slice(start - 1, statementEnd)}*/'${createBlob(`export default importShim._s[${urlJsString(depLoad.r)}]`)}'`;
+                lastIndex = statementEnd;
+            } else if (dynamicImportIndex === -1) {
+                let { l: depLoad } = load.d[depIndex++], blobUrl = depLoad.b, cycleShell = !blobUrl;
                 if (cycleShell) {
                     // circular shell creation
                     if (!(blobUrl = depLoad.s)) {
                         blobUrl = depLoad.s = createBlob(`export function u$_(m){${depLoad.a[1].map((param, i)=>{
-                            let { s , e  } = param;
+                            let { s, e } = param;
                             const q = depLoad.S[s] === '"' || depLoad.S[s] === "'";
                             return `e$_${i}=m${q ? `[` : '.'}${depLoad.S.slice(s, e)}${q ? `]` : ''}`;
                         }).join(',')}}${depLoad.a[1].length ? `let ${depLoad.a[1].map((_, i)=>`e$_${i}`).join(',')};` : ''}export {${depLoad.a[1].map((param, i)=>{
-                            let { s , e  } = param;
+                            let { s, e } = param;
                             return `e$_${i} as ${depLoad.S.slice(s, e)}`;
                         }).join(',')}}\n//# sourceURL=${depLoad.r}?cycle`);
                     }
                 }
                 pushStringTo(start - 1);
-                resolvedSource += `/*${source.slice(start - 1, statementEnd)}*/${urlJsString(blobUrl)}`;
+                resolvedSource += `/*${source.slice(start - 1, statementEnd)}*/'${blobUrl}'`;
                 // circular shell execution
                 if (!cycleShell && depLoad.s) {
                     resolvedSource += `;import*as m$_${depIndex} from'${depLoad.b}';import{u$_ as u$_${depIndex}}from'${depLoad.s}';u$_${depIndex}(m$_${depIndex})`;
@@ -620,14 +720,14 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
                 lastIndex = statementEnd;
             } else {
                 pushStringTo(statementStart + 6);
-                resolvedSource += `Shim(`;
+                resolvedSource += `Shim${t === 5 ? '.source' : ''}(`;
                 dynamicImportEndStack.push(statementEnd - 1);
                 lastIndex = start;
             }
         }
         // support progressive cycle binding updates (try statement avoids tdz errors)
-        if (load.s) resolvedSource += `\n;import{u$_}from'${load.s}';try{u$_({${exports.filter((e)=>e.ln).map((param)=>{
-            let { s , e , ln  } = param;
+        if (load.s && (imports.length === 0 || imports[imports.length - 1].d === -1)) resolvedSource += `\n;import{u$_}from'${load.s}';try{u$_({${exports.filter((e)=>e.ln).map((param)=>{
+            let { s, e, ln } = param;
             return `${source.slice(s, e)}:${ln}`;
         }).join(',')}})}catch(_){};\n`;
         function pushSourceURL(commentPrefix, commentStart) {
@@ -687,55 +787,72 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
         } finally{
             popFetchPool();
         }
-        if (!res.ok) throw Error(`${res.status} ${res.statusText} ${res.url}${fromParent(parent)}`);
+        if (!res.ok) {
+            const error = new TypeError(`${res.status} ${res.statusText} ${res.url}${fromParent(parent)}`);
+            error.response = res;
+            throw error;
+        }
         return res;
     }
     async function fetchModule(url, fetchOpts, parent) {
-        const res = await doFetch(url, fetchOpts, parent);
+        const mapIntegrity = importMap.integrity[url];
+        const res = await doFetch(url, mapIntegrity && !fetchOpts.integrity ? Object.assign({}, fetchOpts, {
+            integrity: mapIntegrity
+        }) : fetchOpts, parent);
+        const r = res.url;
         const contentType = res.headers.get('content-type');
         if (jsContentType.test(contentType)) return {
-            r: res.url,
+            r,
             s: await res.text(),
+            sp: null,
             t: 'js'
         };
         else if (wasmContentType.test(contentType)) {
-            const module = importShim._w[url] = await WebAssembly.compileStreaming(res);
+            const module = await (sourceCache[r] || (sourceCache[r] = WebAssembly.compileStreaming(res)));
+            sourceCache[r] = module;
             let s = '', i = 0, importObj = '';
             for (const impt of WebAssembly.Module.imports(module)){
-                s += `import * as impt${i} from '${impt.module}';\n`;
-                importObj += `'${impt.module}':impt${i++},`;
+                const specifier = urlJsString(impt.module);
+                s += `import * as impt${i} from ${specifier};\n`;
+                importObj += `${specifier}:impt${i++},`;
             }
             i = 0;
-            s += `const instance = await WebAssembly.instantiate(importShim._w['${url}'], {${importObj}});\n`;
+            s += `const instance = await WebAssembly.instantiate(importShim._s[${urlJsString(r)}], {${importObj}});\n`;
             for (const expt of WebAssembly.Module.exports(module)){
-                s += `const expt${i} = instance['${expt.name}'];\n`;
-                s += `export { expt${i++} as "${expt.name}" };\n`;
+                s += `export const ${expt.name} = instance.exports['${expt.name}'];\n`;
             }
             return {
-                r: res.url,
+                r,
                 s,
                 t: 'wasm'
             };
         } else if (jsonContentType.test(contentType)) return {
-            r: res.url,
+            r,
             s: `export default ${await res.text()}`,
+            sp: null,
             t: 'json'
         };
         else if (cssContentType.test(contentType)) {
             return {
-                r: res.url,
+                r,
                 s: `var s=new CSSStyleSheet();s.replaceSync(${JSON.stringify((await res.text()).replace(cssUrlRegEx, (_match, quotes, relUrl1, relUrl2)=>{
                     if (quotes === void 0) quotes = '';
                     return `url(${quotes}${resolveUrl(relUrl1 || relUrl2, url)}${quotes})`;
                 }))});export default s;`,
+                ss: null,
                 t: 'css'
             };
         } else throw Error(`Unsupported Content-Type "${contentType}" loading ${url}${fromParent(parent)}. Modules must be served with a valid MIME type like application/javascript.`);
     }
     function getOrCreateLoad(url, fetchOpts, parent, source) {
+        if (source && registry[url]) {
+            let i = 0;
+            while(registry[url + ++i]);
+            url += i;
+        }
         let load = registry[url];
-        if (load && !source) return load;
-        load = {
+        if (load) return load;
+        registry[url] = load = {
             // url
             u: url,
             // response url
@@ -743,7 +860,7 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
             // fetchPromise
             f: undefined,
             // source
-            S: undefined,
+            S: source,
             // linkPromise
             L: undefined,
             // analysis
@@ -761,24 +878,18 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
             // meta
             m: null
         };
-        if (registry[url]) {
-            let i = 0;
-            while(registry[load.u + ++i]);
-            load.u += i;
-        }
-        registry[load.u] = load;
         load.f = (async ()=>{
-            if (!source) {
+            if (!load.S) {
                 // preload fetch options override fetch options (race)
                 let t;
-                ({ r: load.r , s: source , t  } = await (fetchCache[url] || fetchModule(url, fetchOpts, parent)));
+                ({ r: load.r, s: load.S, t } = await (fetchCache[url] || fetchModule(url, fetchOpts, parent)));
                 if (t && !shimMode) {
-                    if (t === 'css' && !cssModulesEnabled || t === 'json' && !jsonModulesEnabled) throw Error(`${t}-modules require <script type="esms-options">{ "polyfillEnable": ["${t}-modules"] }<${''}/script>`);
-                    if (t === 'css' && !supportsCssAssertions || t === 'json' && !supportsJsonAssertions) load.n = true;
+                    if (t === 'css' && !cssModulesEnabled || t === 'json' && !jsonModulesEnabled || t === 'wasm' && !wasmModulesEnabled) throw featErr(`${t}-modules`);
+                    if (t === 'css' && !supportsCssAssertions || t === 'json' && !supportsJsonAssertions || t === 'wasm' && !supportsWasmModules) load.n = true;
                 }
             }
             try {
-                load.a = parse(source, load.u);
+                load.a = parse(load.S, load.u);
             } catch (e) {
                 throwError(e);
                 load.a = [
@@ -787,28 +898,42 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
                     false
                 ];
             }
-            load.S = source;
             return load;
         })();
+        return load;
+    }
+    const featErr = (feat)=>Error(`${feat} feature must be enabled via <script type="esms-options">{ "polyfillEnable": ["${feat}"] }<${''}/script>`);
+    function linkLoad(load, fetchOpts) {
+        if (load.L) return;
         load.L = load.f.then(async ()=>{
             let childFetchOpts = fetchOpts;
             load.d = (await Promise.all(load.a[0].map(async (param)=>{
-                let { n , d  } = param;
-                if (d >= 0 && !supportsDynamicImport || d === -2 && !supportsImportMeta) load.n = true;
+                let { n, d, t } = param;
+                const sourcePhase = t >= 4;
+                if (sourcePhase && !sourcePhaseEnabled) throw featErr('source-phase');
+                if (d >= 0 && !supportsDynamicImport || d === -2 && !supportsImportMeta || sourcePhase && !supportsSourcePhase) load.n = true;
                 if (d !== -1 || !n) return;
-                const { r , b  } = await resolve(n, load.r || load.u);
+                const { r, b } = await resolve(n, load.r || load.u);
                 if (b && (!supportsImportMaps || importMapSrcOrLazy)) load.n = true;
                 if (d !== -1) return;
-                if (skip && skip(r)) return {
-                    b: r
+                if (skip && skip(r) && !sourcePhase) return {
+                    l: {
+                        b: r
+                    },
+                    s: false
                 };
                 if (childFetchOpts.integrity) childFetchOpts = Object.assign({}, childFetchOpts, {
                     integrity: undefined
                 });
-                return getOrCreateLoad(r, childFetchOpts, load.r).f;
+                const child = {
+                    l: getOrCreateLoad(r, childFetchOpts, load.r, null),
+                    s: sourcePhase
+                };
+                if (!child.s) linkLoad(child.l, fetchOpts);
+                // load, sourcePhase
+                return child;
             }))).filter((l)=>l);
         });
-        return load;
     }
     function processScriptsAndPreloads(mapsOnly) {
         if (mapsOnly === void 0) mapsOnly = false;
@@ -820,6 +945,7 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
         const fetchOpts = {};
         if (script.integrity) fetchOpts.integrity = script.integrity;
         if (script.referrerPolicy) fetchOpts.referrerPolicy = script.referrerPolicy;
+        if (script.fetchPriority) fetchOpts.priority = script.fetchPriority;
         if (script.crossOrigin === 'use-credentials') fetchOpts.credentials = 'include';
         else if (script.crossOrigin === 'anonymous') fetchOpts.credentials = 'omit';
         else fetchOpts.credentials = 'same-origin';
@@ -832,11 +958,21 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
             document.dispatchEvent(new Event('DOMContentLoaded'));
         }
     }
+    let loadCnt = 1;
+    function loadCheck() {
+        if (--loadCnt === 0 && globalLoadEventRetrigger && !noLoadEventRetriggers && (shimMode || !baselinePassthrough)) {
+            window.dispatchEvent(new Event('load'));
+        }
+    }
     // this should always trigger because we assume es-module-shims is itself a domcontentloaded requirement
     if (hasDocument) {
         document.addEventListener('DOMContentLoaded', async ()=>{
             await initPromise;
             domContentLoadedCheck();
+        });
+        window.addEventListener('load', async ()=>{
+            await initPromise;
+            loadCheck();
         });
     }
     let readyStateCompleteCnt = 1;
@@ -873,17 +1009,15 @@ import { B as Buffer } from '../_chunks/polyfills-74bc692c.js';
         const isBlockingReadyScript = script.getAttribute('async') === null && readyStateCompleteCnt > 0;
         // does this load block DOMContentLoaded
         const isDomContentLoadedScript = domContentLoadedCnt > 0;
+        const isLoadScript = loadCnt > 0;
+        if (isLoadScript) loadCnt++;
         if (isBlockingReadyScript) readyStateCompleteCnt++;
         if (isDomContentLoadedScript) domContentLoadedCnt++;
-        const loadPromise = topLevelLoad(script.src || baseUrl, getFetchOpts(script), !script.src && script.innerHTML, !shimMode, isBlockingReadyScript && lastStaticLoadPromise).then(()=>{
-            // if the type of the script tag "module-shim", browser does not dispatch a "load" event
-            // see https://github.com/guybedford/es-module-shims/issues/346
-            if (shimMode) {
-                script.dispatchEvent(new Event('load'));
-            }
-        }).catch(throwError);
+        const loadPromise = topLevelLoad(script.src || baseUrl, getFetchOpts(script), !script.src && script.innerHTML, !shimMode, isBlockingReadyScript && lastStaticLoadPromise).catch(throwError);
+        if (!noLoadEventRetriggers) loadPromise.then(()=>script.dispatchEvent(new Event('load')));
         if (isBlockingReadyScript) lastStaticLoadPromise = loadPromise.then(readyStateCompleteCheck);
         if (isDomContentLoadedScript) loadPromise.then(domContentLoadedCheck);
+        if (isLoadScript) loadPromise.then(loadCheck);
     }
     const fetchCache = {};
     function processPreload(link) {

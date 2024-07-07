@@ -3,6 +3,11 @@ import './MathUtils.js';
 
 const _vector = /*@__PURE__*/ new Vector2();
 class Box2 {
+    constructor(min = new Vector2(+Infinity, +Infinity), max = new Vector2(-Infinity, -Infinity)){
+        this.isBox2 = true;
+        this.min = min;
+        this.max = max;
+    }
     set(min, max) {
         this.min.copy(min);
         this.max.copy(max);
@@ -98,11 +103,6 @@ class Box2 {
     }
     equals(box) {
         return box.min.equals(this.min) && box.max.equals(this.max);
-    }
-    constructor(min = new Vector2(+Infinity, +Infinity), max = new Vector2(-Infinity, -Infinity)){
-        this.isBox2 = true;
-        this.min = min;
-        this.max = max;
     }
 }
 

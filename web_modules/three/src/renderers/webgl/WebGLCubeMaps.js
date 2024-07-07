@@ -50,7 +50,7 @@ function WebGLCubeMaps(renderer) {
         return texture;
     }
     function get(texture) {
-        if (texture && texture.isTexture && texture.isRenderTargetTexture === false) {
+        if (texture && texture.isTexture) {
             const mapping = texture.mapping;
             if (mapping === EquirectangularReflectionMapping || mapping === EquirectangularRefractionMapping) {
                 if (cubemaps.has(texture)) {
@@ -59,7 +59,7 @@ function WebGLCubeMaps(renderer) {
                 } else {
                     const image = texture.image;
                     if (image && image.height > 0) {
-                        const renderTarget = new WebGLCubeRenderTarget(image.height / 2);
+                        const renderTarget = new WebGLCubeRenderTarget(image.height);
                         renderTarget.fromEquirectangularTexture(renderer, texture);
                         cubemaps.set(texture, renderTarget);
                         texture.addEventListener('dispose', onTextureDispose);

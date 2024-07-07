@@ -2,6 +2,58 @@ import { Quaternion } from '../math/Quaternion.js';
 import '../math/MathUtils.js';
 
 class PropertyMixer {
+    constructor(binding, typeName, valueSize){
+        this.binding = binding;
+        this.valueSize = valueSize;
+        let mixFunction, mixFunctionAdditive, setIdentity;
+        // buffer layout: [ incoming | accu0 | accu1 | orig | addAccu | (optional work) ]
+        //
+        // interpolators can use .buffer as their .result
+        // the data then goes to 'incoming'
+        //
+        // 'accu0' and 'accu1' are used frame-interleaved for
+        // the cumulative result and are compared to detect
+        // changes
+        //
+        // 'orig' stores the original state of the property
+        //
+        // 'add' is used for additive cumulative results
+        //
+        // 'work' is optional and is only present for quaternion types. It is used
+        // to store intermediate quaternion multiplication results
+        switch(typeName){
+            case 'quaternion':
+                mixFunction = this._slerp;
+                mixFunctionAdditive = this._slerpAdditive;
+                setIdentity = this._setAdditiveIdentityQuaternion;
+                this.buffer = new Float64Array(valueSize * 6);
+                this._workIndex = 5;
+                break;
+            case 'string':
+            case 'bool':
+                mixFunction = this._select;
+                // Use the regular mix function and for additive on these types,
+                // additive is not relevant for non-numeric types
+                mixFunctionAdditive = this._select;
+                setIdentity = this._setAdditiveIdentityOther;
+                this.buffer = new Array(valueSize * 5);
+                break;
+            default:
+                mixFunction = this._lerp;
+                mixFunctionAdditive = this._lerpAdditive;
+                setIdentity = this._setAdditiveIdentityNumeric;
+                this.buffer = new Float64Array(valueSize * 5);
+        }
+        this._mixBufferRegion = mixFunction;
+        this._mixBufferRegionAdditive = mixFunctionAdditive;
+        this._setIdentity = setIdentity;
+        this._origIndex = 3;
+        this._addIndex = 4;
+        this.cumulativeWeight = 0;
+        this.cumulativeWeightAdditive = 0;
+        this.useCount = 0;
+        this.referenceCount = 0;
+    }
     // accumulate data in the 'incoming' region into 'accu<i>'
     accumulate(accuIndex, weight) {
         // note: happily accumulating nothing when weight = 0, the caller knows
@@ -122,58 +174,6 @@ class PropertyMixer {
             const j = dstOffset + i;
             buffer[j] = buffer[j] + buffer[srcOffset + i] * t;
         }
-    }
-    constructor(binding, typeName, valueSize){
-        this.binding = binding;
-        this.valueSize = valueSize;
-        let mixFunction, mixFunctionAdditive, setIdentity;
-        // buffer layout: [ incoming | accu0 | accu1 | orig | addAccu | (optional work) ]
-        //
-        // interpolators can use .buffer as their .result
-        // the data then goes to 'incoming'
-        //
-        // 'accu0' and 'accu1' are used frame-interleaved for
-        // the cumulative result and are compared to detect
-        // changes
-        //
-        // 'orig' stores the original state of the property
-        //
-        // 'add' is used for additive cumulative results
-        //
-        // 'work' is optional and is only present for quaternion types. It is used
-        // to store intermediate quaternion multiplication results
-        switch(typeName){
-            case 'quaternion':
-                mixFunction = this._slerp;
-                mixFunctionAdditive = this._slerpAdditive;
-                setIdentity = this._setAdditiveIdentityQuaternion;
-                this.buffer = new Float64Array(valueSize * 6);
-                this._workIndex = 5;
-                break;
-            case 'string':
-            case 'bool':
-                mixFunction = this._select;
-                // Use the regular mix function and for additive on these types,
-                // additive is not relevant for non-numeric types
-                mixFunctionAdditive = this._select;
-                setIdentity = this._setAdditiveIdentityOther;
-                this.buffer = new Array(valueSize * 5);
-                break;
-            default:
-                mixFunction = this._lerp;
-                mixFunctionAdditive = this._lerpAdditive;
-                setIdentity = this._setAdditiveIdentityNumeric;
-                this.buffer = new Float64Array(valueSize * 5);
-        }
-        this._mixBufferRegion = mixFunction;
-        this._mixBufferRegionAdditive = mixFunctionAdditive;
-        this._setIdentity = setIdentity;
-        this._origIndex = 3;
-        this._addIndex = 4;
-        this.cumulativeWeight = 0;
-        this.cumulativeWeightAdditive = 0;
-        this.useCount = 0;
-        this.referenceCount = 0;
     }
 }
 

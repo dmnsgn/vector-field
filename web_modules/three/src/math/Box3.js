@@ -3,6 +3,11 @@ import './MathUtils.js';
 import './Quaternion.js';
 
 class Box3 {
+    constructor(min = new Vector3(+Infinity, +Infinity, +Infinity), max = new Vector3(-Infinity, -Infinity, -Infinity)){
+        this.isBox3 = true;
+        this.min = min;
+        this.max = max;
+    }
     set(min, max) {
         this.min.copy(min);
         this.max.copy(max);
@@ -83,30 +88,37 @@ class Box3 {
         // Computes the world-axis-aligned bounding box of an object (including its children),
         // accounting for both the object's, and children's, world transforms
         object.updateWorldMatrix(false, false);
-        if (object.boundingBox !== undefined) {
-            if (object.boundingBox === null) {
-                object.computeBoundingBox();
-            }
-            _box.copy(object.boundingBox);
-            _box.applyMatrix4(object.matrixWorld);
-            this.union(_box);
-        } else {
-            const geometry = object.geometry;
-            if (geometry !== undefined) {
-                if (precise && geometry.attributes !== undefined && geometry.attributes.position !== undefined) {
-                    const position = geometry.attributes.position;
-                    for(let i = 0, l = position.count; i < l; i++){
-                        _vector.fromBufferAttribute(position, i).applyMatrix4(object.matrixWorld);
-                        this.expandByPoint(_vector);
+        const geometry = object.geometry;
+        if (geometry !== undefined) {
+            const positionAttribute = geometry.getAttribute('position');
+            // precise AABB computation based on vertex data requires at least a position attribute.
+            // instancing isn't supported so far and uses the normal (conservative) code path.
+            if (precise === true && positionAttribute !== undefined && object.isInstancedMesh !== true) {
+                for(let i = 0, l = positionAttribute.count; i < l; i++){
+                    if (object.isMesh === true) {
+                        object.getVertexPosition(i, _vector);
+                    } else {
+                        _vector.fromBufferAttribute(positionAttribute, i);
                     }
+                    _vector.applyMatrix4(object.matrixWorld);
+                    this.expandByPoint(_vector);
+                }
+            } else {
+                if (object.boundingBox !== undefined) {
+                    // object-level bounding box
+                    if (object.boundingBox === null) {
+                        object.computeBoundingBox();
+                    }
+                    _box.copy(object.boundingBox);
                 } else {
+                    // geometry-level bounding box
                     if (geometry.boundingBox === null) {
                         geometry.computeBoundingBox();
                     }
                     _box.copy(geometry.boundingBox);
-                    _box.applyMatrix4(object.matrixWorld);
-                    this.union(_box);
                 }
+                _box.applyMatrix4(object.matrixWorld);
+                this.union(_box);
             }
         }
         const children = object.children;
@@ -287,11 +299,6 @@ class Box3 {
     }
     equals(box) {
         return box.min.equals(this.min) && box.max.equals(this.max);
-    }
-    constructor(min = new Vector3(+Infinity, +Infinity, +Infinity), max = new Vector3(-Infinity, -Infinity, -Infinity)){
-        this.isBox3 = true;
-        this.min = min;
-        this.max = max;
     }
 }
 const _points = [

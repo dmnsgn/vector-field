@@ -10,11 +10,32 @@ import '../core/EventDispatcher.js';
 import '../math/Euler.js';
 import '../core/Layers.js';
 import '../math/Matrix3.js';
+import '../math/Vector2.js';
 
 const _eyeRight = /*@__PURE__*/ new Matrix4();
 const _eyeLeft = /*@__PURE__*/ new Matrix4();
 const _projectionMatrix = /*@__PURE__*/ new Matrix4();
 class StereoCamera {
+    constructor(){
+        this.type = 'StereoCamera';
+        this.aspect = 1;
+        this.eyeSep = 0.064;
+        this.cameraL = new PerspectiveCamera();
+        this.cameraL.layers.enable(1);
+        this.cameraL.matrixAutoUpdate = false;
+        this.cameraR = new PerspectiveCamera();
+        this.cameraR.layers.enable(2);
+        this.cameraR.matrixAutoUpdate = false;
+        this._cache = {
+            focus: null,
+            fov: null,
+            aspect: null,
+            near: null,
+            far: null,
+            zoom: null,
+            eyeSep: null
+        };
+    }
     update(camera) {
         const cache = this._cache;
         const needsUpdate = cache.focus !== camera.focus || cache.fov !== camera.fov || cache.aspect !== camera.aspect * this.aspect || cache.near !== camera.near || cache.far !== camera.far || cache.zoom !== camera.zoom || cache.eyeSep !== this.eyeSep;
@@ -51,26 +72,6 @@ class StereoCamera {
         }
         this.cameraL.matrixWorld.copy(camera.matrixWorld).multiply(_eyeLeft);
         this.cameraR.matrixWorld.copy(camera.matrixWorld).multiply(_eyeRight);
-    }
-    constructor(){
-        this.type = 'StereoCamera';
-        this.aspect = 1;
-        this.eyeSep = 0.064;
-        this.cameraL = new PerspectiveCamera();
-        this.cameraL.layers.enable(1);
-        this.cameraL.matrixAutoUpdate = false;
-        this.cameraR = new PerspectiveCamera();
-        this.cameraR.layers.enable(2);
-        this.cameraR.matrixAutoUpdate = false;
-        this._cache = {
-            focus: null,
-            fov: null,
-            aspect: null,
-            near: null,
-            far: null,
-            zoom: null,
-            eyeSep: null
-        };
     }
 }
 

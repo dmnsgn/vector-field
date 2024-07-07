@@ -25,4 +25,8 @@ import '../renderers/shaders/UniformsUtils.js';
 import '../renderers/shaders/ShaderChunk/default_vertex.glsl.js';
 import '../renderers/shaders/ShaderChunk/default_fragment.glsl.js';
 import '../math/Vector2.js';
+import '../math/Euler.js';
+import '../math/Quaternion.js';
+import '../math/Matrix4.js';
+import '../math/Vector3.js';
 import '../core/EventDispatcher.js';

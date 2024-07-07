@@ -8,15 +8,21 @@ import './EventDispatcher.js';
 import './BufferAttribute.js';
 import '../constants.js';
 import '../extras/DataUtils.js';
+import '../utils.js';
 import '../math/Sphere.js';
 import './Object3D.js';
 import '../math/Matrix4.js';
 import '../math/Euler.js';
 import './Layers.js';
 import '../math/Matrix3.js';
-import '../utils.js';
 
 class InstancedBufferGeometry extends BufferGeometry {
+    constructor(){
+        super();
+        this.isInstancedBufferGeometry = true;
+        this.type = 'InstancedBufferGeometry';
+        this.instanceCount = Infinity;
+    }
     copy(source) {
         super.copy(source);
         this.instanceCount = source.instanceCount;
@@ -27,12 +33,6 @@ class InstancedBufferGeometry extends BufferGeometry {
         data.instanceCount = this.instanceCount;
         data.isInstancedBufferGeometry = true;
         return data;
-    }
-    constructor(){
-        super();
-        this.isInstancedBufferGeometry = true;
-        this.type = 'InstancedBufferGeometry';
-        this.instanceCount = Infinity;
     }
 }
 

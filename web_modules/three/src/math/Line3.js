@@ -5,6 +5,10 @@ import './Quaternion.js';
 const _startP = /*@__PURE__*/ new Vector3();
 const _startEnd = /*@__PURE__*/ new Vector3();
 class Line3 {
+    constructor(start = new Vector3(), end = new Vector3()){
+        this.start = start;
+        this.end = end;
+    }
     set(start, end) {
         this.start.copy(start);
         this.end.copy(end);
@@ -55,10 +59,6 @@ class Line3 {
     }
     clone() {
         return new this.constructor().copy(this);
-    }
-    constructor(start = new Vector3(), end = new Vector3()){
-        this.start = start;
-        this.end = end;
     }
 }
 

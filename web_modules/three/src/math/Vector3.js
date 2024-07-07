@@ -2,6 +2,12 @@ import { clamp } from './MathUtils.js';
 import { Quaternion } from './Quaternion.js';
 
 class Vector3 {
+    constructor(x = 0, y = 0, z = 0){
+        Vector3.prototype.isVector3 = true;
+        this.x = x;
+        this.y = y;
+        this.z = z;
+    }
     set(x, y, z) {
         if (z === undefined) z = this.z; // sprite.scale.set(x,y)
         this.x = x;
@@ -151,17 +157,17 @@ class Vector3 {
         return this;
     }
     applyQuaternion(q) {
-        const x = this.x, y = this.y, z = this.z;
+        // quaternion q is assumed to have unit length
+        const vx = this.x, vy = this.y, vz = this.z;
         const qx = q.x, qy = q.y, qz = q.z, qw = q.w;
-        // calculate quat * vector
-        const ix = qw * x + qy * z - qz * y;
-        const iy = qw * y + qz * x - qx * z;
-        const iz = qw * z + qx * y - qy * x;
-        const iw = -qx * x - qy * y - qz * z;
-        // calculate result * inverse quat
-        this.x = ix * qw + iw * -qx + iy * -qz - iz * -qy;
-        this.y = iy * qw + iw * -qy + iz * -qx - ix * -qz;
-        this.z = iz * qw + iw * -qz + ix * -qy - iy * -qx;
+        // t = 2 * cross( q.xyz, v );
+        const tx = 2 * (qy * vz - qz * vy);
+        const ty = 2 * (qz * vx - qx * vz);
+        const tz = 2 * (qx * vy - qy * vx);
+        // v + q.w * t + cross( q.xyz, t );
+        this.x = vx + qw * tx + qy * tz - qz * ty;
+        this.y = vy + qw * ty + qz * tx - qx * tz;
+        this.z = vz + qw * tz + qx * ty - qy * tx;
         return this;
     }
     project(camera) {
@@ -406,25 +412,19 @@ class Vector3 {
         return this;
     }
     randomDirection() {
-        // Derived from https://mathworld.wolfram.com/SpherePointPicking.html
-        const u = (Math.random() - 0.5) * 2;
-        const t = Math.random() * Math.PI * 2;
-        const f = Math.sqrt(1 - u ** 2);
-        this.x = f * Math.cos(t);
-        this.y = f * Math.sin(t);
-        this.z = u;
+        // https://mathworld.wolfram.com/SpherePointPicking.html
+        const theta = Math.random() * Math.PI * 2;
+        const u = Math.random() * 2 - 1;
+        const c = Math.sqrt(1 - u * u);
+        this.x = c * Math.cos(theta);
+        this.y = u;
+        this.z = c * Math.sin(theta);
         return this;
     }
     *[Symbol.iterator]() {
         yield this.x;
         yield this.y;
         yield this.z;
-    }
-    constructor(x = 0, y = 0, z = 0){
-        Vector3.prototype.isVector3 = true;
-        this.x = x;
-        this.y = y;
-        this.z = z;
     }
 }
 const _vector = /*@__PURE__*/ new Vector3();

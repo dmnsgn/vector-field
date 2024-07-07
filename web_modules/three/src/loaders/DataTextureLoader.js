@@ -19,6 +19,9 @@ import '../math/ColorManagement.js';
  *
  * Sub classes have to implement the parse() method which will be used in load().
  */ class DataTextureLoader extends Loader {
+    constructor(manager){
+        super(manager);
+    }
     load(url, onLoad, onProgress, onError) {
         const scope = this;
         const texture = new DataTexture();
@@ -53,8 +56,6 @@ import '../math/ColorManagement.js';
             texture.anisotropy = texData.anisotropy !== undefined ? texData.anisotropy : 1;
             if (texData.colorSpace !== undefined) {
                 texture.colorSpace = texData.colorSpace;
-            } else if (texData.encoding !== undefined) {
-                texture.encoding = texData.encoding;
             }
             if (texData.flipY !== undefined) {
                 texture.flipY = texData.flipY;
@@ -79,9 +80,6 @@ import '../math/ColorManagement.js';
             if (onLoad) onLoad(texture, texData);
         }, onProgress, onError);
         return texture;
-    }
-    constructor(manager){
-        super(manager);
     }
 }
 

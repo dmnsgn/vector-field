@@ -32,6 +32,78 @@ const _camera = /*@__PURE__*/ new Camera();
  * 	- based on frustum visualization in lightgl.js shadowmap example
  *		https://github.com/evanw/lightgl.js/blob/master/tests/shadowmap.html
  */ class CameraHelper extends LineSegments {
+    constructor(camera){
+        const geometry = new BufferGeometry();
+        const material = new LineBasicMaterial({
+            color: 0xffffff,
+            vertexColors: true,
+            toneMapped: false
+        });
+        const vertices = [];
+        const colors = [];
+        const pointMap = {};
+        // near
+        addLine('n1', 'n2');
+        addLine('n2', 'n4');
+        addLine('n4', 'n3');
+        addLine('n3', 'n1');
+        // far
+        addLine('f1', 'f2');
+        addLine('f2', 'f4');
+        addLine('f4', 'f3');
+        addLine('f3', 'f1');
+        // sides
+        addLine('n1', 'f1');
+        addLine('n2', 'f2');
+        addLine('n3', 'f3');
+        addLine('n4', 'f4');
+        // cone
+        addLine('p', 'n1');
+        addLine('p', 'n2');
+        addLine('p', 'n3');
+        addLine('p', 'n4');
+        // up
+        addLine('u1', 'u2');
+        addLine('u2', 'u3');
+        addLine('u3', 'u1');
+        // target
+        addLine('c', 't');
+        addLine('p', 'c');
+        // cross
+        addLine('cn1', 'cn2');
+        addLine('cn3', 'cn4');
+        addLine('cf1', 'cf2');
+        addLine('cf3', 'cf4');
+        function addLine(a, b) {
+            addPoint(a);
+            addPoint(b);
+        }
+        function addPoint(id) {
+            vertices.push(0, 0, 0);
+            colors.push(0, 0, 0);
+            if (pointMap[id] === undefined) {
+                pointMap[id] = [];
+            }
+            pointMap[id].push(vertices.length / 3 - 1);
+        }
+        geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
+        geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
+        super(geometry, material);
+        this.type = 'CameraHelper';
+        this.camera = camera;
+        if (this.camera.updateProjectionMatrix) this.camera.updateProjectionMatrix();
+        this.matrix = camera.matrixWorld;
+        this.matrixAutoUpdate = false;
+        this.pointMap = pointMap;
+        this.update();
+        // colors
+        const colorFrustum = new Color(0xffaa00);
+        const colorCone = new Color(0xff0000);
+        const colorUp = new Color(0x00aaff);
+        const colorTarget = new Color(0xffffff);
+        const colorCross = new Color(0x333333);
+        this.setColors(colorFrustum, colorCone, colorUp, colorTarget, colorCross);
+    }
     setColors(frustum, cone, up, target, cross) {
         const geometry = this.geometry;
         const colorAttribute = geometry.getAttribute('color');
@@ -132,78 +204,6 @@ const _camera = /*@__PURE__*/ new Camera();
     dispose() {
         this.geometry.dispose();
         this.material.dispose();
-    }
-    constructor(camera){
-        const geometry = new BufferGeometry();
-        const material = new LineBasicMaterial({
-            color: 0xffffff,
-            vertexColors: true,
-            toneMapped: false
-        });
-        const vertices = [];
-        const colors = [];
-        const pointMap = {};
-        // near
-        addLine('n1', 'n2');
-        addLine('n2', 'n4');
-        addLine('n4', 'n3');
-        addLine('n3', 'n1');
-        // far
-        addLine('f1', 'f2');
-        addLine('f2', 'f4');
-        addLine('f4', 'f3');
-        addLine('f3', 'f1');
-        // sides
-        addLine('n1', 'f1');
-        addLine('n2', 'f2');
-        addLine('n3', 'f3');
-        addLine('n4', 'f4');
-        // cone
-        addLine('p', 'n1');
-        addLine('p', 'n2');
-        addLine('p', 'n3');
-        addLine('p', 'n4');
-        // up
-        addLine('u1', 'u2');
-        addLine('u2', 'u3');
-        addLine('u3', 'u1');
-        // target
-        addLine('c', 't');
-        addLine('p', 'c');
-        // cross
-        addLine('cn1', 'cn2');
-        addLine('cn3', 'cn4');
-        addLine('cf1', 'cf2');
-        addLine('cf3', 'cf4');
-        function addLine(a, b) {
-            addPoint(a);
-            addPoint(b);
-        }
-        function addPoint(id) {
-            vertices.push(0, 0, 0);
-            colors.push(0, 0, 0);
-            if (pointMap[id] === undefined) {
-                pointMap[id] = [];
-            }
-            pointMap[id].push(vertices.length / 3 - 1);
-        }
-        geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
-        geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
-        super(geometry, material);
-        this.type = 'CameraHelper';
-        this.camera = camera;
-        if (this.camera.updateProjectionMatrix) this.camera.updateProjectionMatrix();
-        this.matrix = camera.matrixWorld;
-        this.matrixAutoUpdate = false;
-        this.pointMap = pointMap;
-        this.update();
-        // colors
-        const colorFrustum = new Color(0xffaa00);
-        const colorCone = new Color(0xff0000);
-        const colorUp = new Color(0x00aaff);
-        const colorTarget = new Color(0xffffff);
-        const colorCross = new Color(0x333333);
-        this.setColors(colorFrustum, colorCone, colorUp, colorTarget, colorCross);
     }
 }
 function setPoint(point, pointMap, geometry, camera, x, y, z) {

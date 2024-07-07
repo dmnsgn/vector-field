@@ -17,14 +17,6 @@ import '../utils.js';
 import '../extras/DataUtils.js';
 
 class PolyhedronGeometry extends BufferGeometry {
-    copy(source) {
-        super.copy(source);
-        this.parameters = Object.assign({}, source.parameters);
-        return this;
-    }
-    static fromJSON(data) {
-        return new PolyhedronGeometry(data.vertices, data.indices, data.radius, data.details);
-    }
     constructor(vertices = [], indices = [], radius = 1, detail = 0){
         super();
         this.type = 'PolyhedronGeometry';
@@ -191,6 +183,14 @@ class PolyhedronGeometry extends BufferGeometry {
         function inclination(vector) {
             return Math.atan2(-vector.y, Math.sqrt(vector.x * vector.x + vector.z * vector.z));
         }
+    }
+    copy(source) {
+        super.copy(source);
+        this.parameters = Object.assign({}, source.parameters);
+        return this;
+    }
+    static fromJSON(data) {
+        return new PolyhedronGeometry(data.vertices, data.indices, data.radius, data.details);
     }
 }
 

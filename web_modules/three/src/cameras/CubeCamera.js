@@ -10,10 +10,36 @@ import '../math/Euler.js';
 import '../core/Layers.js';
 import '../math/Matrix3.js';
 import './Camera.js';
+import '../math/Vector2.js';
 
 const fov = -90; // negative fov is not an error
 const aspect = 1;
 class CubeCamera extends Object3D {
+    constructor(near, far, renderTarget){
+        super();
+        this.type = 'CubeCamera';
+        this.renderTarget = renderTarget;
+        this.coordinateSystem = null;
+        this.activeMipmapLevel = 0;
+        const cameraPX = new PerspectiveCamera(fov, aspect, near, far);
+        cameraPX.layers = this.layers;
+        this.add(cameraPX);
+        const cameraNX = new PerspectiveCamera(fov, aspect, near, far);
+        cameraNX.layers = this.layers;
+        this.add(cameraNX);
+        const cameraPY = new PerspectiveCamera(fov, aspect, near, far);
+        cameraPY.layers = this.layers;
+        this.add(cameraPY);
+        const cameraNY = new PerspectiveCamera(fov, aspect, near, far);
+        cameraNY.layers = this.layers;
+        this.add(cameraNY);
+        const cameraPZ = new PerspectiveCamera(fov, aspect, near, far);
+        cameraPZ.layers = this.layers;
+        this.add(cameraPZ);
+        const cameraNZ = new PerspectiveCamera(fov, aspect, near, far);
+        cameraNZ.layers = this.layers;
+        this.add(cameraNZ);
+    }
     updateCoordinateSystem() {
         const coordinateSystem = this.coordinateSystem;
         const cameras = this.children.concat();
@@ -55,7 +81,7 @@ class CubeCamera extends Object3D {
     }
     update(renderer, scene) {
         if (this.parent === null) this.updateMatrixWorld();
-        const { renderTarget , activeMipmapLevel  } = this;
+        const { renderTarget, activeMipmapLevel } = this;
         if (this.coordinateSystem !== renderer.coordinateSystem) {
             this.coordinateSystem = renderer.coordinateSystem;
             this.updateCoordinateSystem();
@@ -86,31 +112,6 @@ class CubeCamera extends Object3D {
         renderer.setRenderTarget(currentRenderTarget, currentActiveCubeFace, currentActiveMipmapLevel);
         renderer.xr.enabled = currentXrEnabled;
         renderTarget.texture.needsPMREMUpdate = true;
-    }
-    constructor(near, far, renderTarget){
-        super();
-        this.type = 'CubeCamera';
-        this.renderTarget = renderTarget;
-        this.coordinateSystem = null;
-        this.activeMipmapLevel = 0;
-        const cameraPX = new PerspectiveCamera(fov, aspect, near, far);
-        cameraPX.layers = this.layers;
-        this.add(cameraPX);
-        const cameraNX = new PerspectiveCamera(fov, aspect, near, far);
-        cameraNX.layers = this.layers;
-        this.add(cameraNX);
-        const cameraPY = new PerspectiveCamera(fov, aspect, near, far);
-        cameraPY.layers = this.layers;
-        this.add(cameraPY);
-        const cameraNY = new PerspectiveCamera(fov, aspect, near, far);
-        cameraNY.layers = this.layers;
-        this.add(cameraNY);
-        const cameraPZ = new PerspectiveCamera(fov, aspect, near, far);
-        cameraPZ.layers = this.layers;
-        this.add(cameraPZ);
-        const cameraNZ = new PerspectiveCamera(fov, aspect, near, far);
-        cameraNZ.layers = this.layers;
-        this.add(cameraNZ);
     }
 }
 

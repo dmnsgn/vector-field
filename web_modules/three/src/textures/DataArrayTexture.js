@@ -25,6 +25,13 @@ class DataArrayTexture extends Texture {
         this.generateMipmaps = false;
         this.flipY = false;
         this.unpackAlignment = 1;
+        this.layerUpdates = new Set();
+    }
+    addLayerUpdate(layerIndex) {
+        this.layerUpdates.add(layerIndex);
+    }
+    clearLayerUpdates() {
+        this.layerUpdates.clear();
     }
 }
 

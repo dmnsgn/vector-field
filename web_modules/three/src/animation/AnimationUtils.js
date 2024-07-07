@@ -54,7 +54,7 @@ function flattenJSON(jsonKeys, times, values, valuePropertyName) {
                 values.push.apply(values, value); // push all elements
             }
             key = jsonKeys[i++];
-        }while (key !== undefined)
+        }while (key !== undefined);
     } else if (value.toArray !== undefined) {
         // ...assume THREE.Math-ish
         do {
@@ -64,7 +64,7 @@ function flattenJSON(jsonKeys, times, values, valuePropertyName) {
                 value.toArray(values, values.length);
             }
             key = jsonKeys[i++];
-        }while (key !== undefined)
+        }while (key !== undefined);
     } else {
         // otherwise push as-is
         do {
@@ -74,7 +74,7 @@ function flattenJSON(jsonKeys, times, values, valuePropertyName) {
                 values.push(value);
             }
             key = jsonKeys[i++];
-        }while (key !== undefined)
+        }while (key !== undefined);
     }
 }
 function subclip(sourceClip, name, startFrame, endFrame, fps) {

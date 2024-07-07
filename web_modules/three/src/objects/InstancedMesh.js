@@ -3,13 +3,15 @@ import { Mesh } from './Mesh.js';
 import { Box3 } from '../math/Box3.js';
 import { Matrix4 } from '../math/Matrix4.js';
 import { Sphere } from '../math/Sphere.js';
+import { DataTexture } from '../textures/DataTexture.js';
+import { RedFormat, FloatType } from '../constants.js';
 import '../core/BufferAttribute.js';
 import '../math/Vector3.js';
 import '../math/MathUtils.js';
 import '../math/Quaternion.js';
 import '../math/Vector2.js';
-import '../constants.js';
 import '../extras/DataUtils.js';
+import '../utils.js';
 import '../math/Ray.js';
 import '../core/Object3D.js';
 import '../core/EventDispatcher.js';
@@ -22,7 +24,9 @@ import '../materials/Material.js';
 import '../math/Color.js';
 import '../math/ColorManagement.js';
 import '../core/BufferGeometry.js';
-import '../utils.js';
+import '../textures/Texture.js';
+import '../textures/Source.js';
+import '../extras/ImageUtils.js';
 
 const _instanceLocalMatrix = /*@__PURE__*/ new Matrix4();
 const _instanceWorldMatrix = /*@__PURE__*/ new Matrix4();
@@ -32,6 +36,19 @@ const _identity = /*@__PURE__*/ new Matrix4();
 const _mesh = /*@__PURE__*/ new Mesh();
 const _sphere = /*@__PURE__*/ new Sphere();
 class InstancedMesh extends Mesh {
+    constructor(geometry, material, count){
+        super(geometry, material);
+        this.isInstancedMesh = true;
+        this.instanceMatrix = new InstancedBufferAttribute(new Float32Array(count * 16), 16);
+        this.instanceColor = null;
+        this.morphTexture = null;
+        this.count = count;
+        this.boundingBox = null;
+        this.boundingSphere = null;
+        for(let i = 0; i < count; i++){
+            this.setMatrixAt(i, _identity);
+        }
+    }
     computeBoundingBox() {
         const geometry = this.geometry;
         const count = this.count;
@@ -67,6 +84,7 @@ class InstancedMesh extends Mesh {
     copy(source, recursive) {
         super.copy(source, recursive);
         this.instanceMatrix.copy(source.instanceMatrix);
+        if (source.morphTexture !== null) this.morphTexture = source.morphTexture.clone();
         if (source.instanceColor !== null) this.instanceColor = source.instanceColor.clone();
         this.count = source.count;
         if (source.boundingBox !== null) this.boundingBox = source.boundingBox.clone();
@@ -78,6 +96,15 @@ class InstancedMesh extends Mesh {
     }
     getMatrixAt(index, matrix) {
         matrix.fromArray(this.instanceMatrix.array, index * 16);
+    }
+    getMorphAt(index, object) {
+        const objectInfluences = object.morphTargetInfluences;
+        const array = this.morphTexture.source.data.data;
+        const len = objectInfluences.length + 1; // All influences + the baseInfluenceSum
+        const dataIndex = index * len + 1; // Skip the baseInfluenceSum at the beginning
+        for(let i = 0; i < objectInfluences.length; i++){
+            objectInfluences[i] = array[dataIndex + i];
+        }
     }
     raycast(raycaster, intersects) {
         const matrixWorld = this.matrixWorld;
@@ -117,23 +144,32 @@ class InstancedMesh extends Mesh {
     setMatrixAt(index, matrix) {
         matrix.toArray(this.instanceMatrix.array, index * 16);
     }
+    setMorphAt(index, object) {
+        const objectInfluences = object.morphTargetInfluences;
+        const len = objectInfluences.length + 1; // morphBaseInfluence + all influences
+        if (this.morphTexture === null) {
+            this.morphTexture = new DataTexture(new Float32Array(len * this.count), len, this.count, RedFormat, FloatType);
+        }
+        const array = this.morphTexture.source.data.data;
+        let morphInfluencesSum = 0;
+        for(let i = 0; i < objectInfluences.length; i++){
+            morphInfluencesSum += objectInfluences[i];
+        }
+        const morphBaseInfluence = this.geometry.morphTargetsRelative ? 1 : 1 - morphInfluencesSum;
+        const dataIndex = len * index;
+        array[dataIndex] = morphBaseInfluence;
+        array.set(objectInfluences, dataIndex + 1);
+    }
     updateMorphTargets() {}
     dispose() {
         this.dispatchEvent({
             type: 'dispose'
         });
-    }
-    constructor(geometry, material, count){
-        super(geometry, material);
-        this.isInstancedMesh = true;
-        this.instanceMatrix = new InstancedBufferAttribute(new Float32Array(count * 16), 16);
-        this.instanceColor = null;
-        this.count = count;
-        this.boundingBox = null;
-        this.boundingSphere = null;
-        for(let i = 0; i < count; i++){
-            this.setMatrixAt(i, _identity);
+        if (this.morphTexture !== null) {
+            this.morphTexture.dispose();
+            this.morphTexture = null;
         }
+        return this;
     }
 }
 

@@ -5,6 +5,9 @@ import '../MathUtils.js';
 /**
  * Spherical linear unit quaternion interpolant.
  */ class QuaternionLinearInterpolant extends Interpolant {
+    constructor(parameterPositions, sampleValues, sampleSize, resultBuffer){
+        super(parameterPositions, sampleValues, sampleSize, resultBuffer);
+    }
     interpolate_(i1, t0, t, t1) {
         const result = this.resultBuffer, values = this.sampleValues, stride = this.valueSize, alpha = (t - t0) / (t1 - t0);
         let offset = i1 * stride;
@@ -12,9 +15,6 @@ import '../MathUtils.js';
             Quaternion.slerpFlat(result, 0, values, offset - stride, values, offset, alpha);
         }
         return result;
-    }
-    constructor(parameterPositions, sampleValues, sampleSize, resultBuffer){
-        super(parameterPositions, sampleValues, sampleSize, resultBuffer);
     }
 }
 

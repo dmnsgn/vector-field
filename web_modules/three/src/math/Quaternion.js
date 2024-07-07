@@ -1,6 +1,13 @@
 import { clamp } from './MathUtils.js';
 
 class Quaternion {
+    constructor(x = 0, y = 0, z = 0, w = 1){
+        this.isQuaternion = true;
+        this._x = x;
+        this._y = y;
+        this._z = z;
+        this._w = w;
+    }
     static slerpFlat(dst, dstOffset, src0, srcOffset0, src1, srcOffset1, t) {
         // fuzz-free, array-based Quaternion SLERP operation
         let x0 = src0[srcOffset0 + 0], y0 = src0[srcOffset0 + 1], z0 = src0[srcOffset0 + 2], w0 = src0[srcOffset0 + 3];
@@ -110,6 +117,7 @@ class Quaternion {
         return this;
     }
     setFromEuler(euler, update) {
+        if (update === void 0) update = true;
         const x = euler._x, y = euler._y, z = euler._z, order = euler._order;
         // http://www.mathworks.com/matlabcentral/fileexchange/
         // 	20696-function-to-convert-between-dcm-euler-angles-quaternions-and-euler-vectors/
@@ -162,7 +170,7 @@ class Quaternion {
             default:
                 console.warn('THREE.Quaternion: .setFromEuler() encountered an unknown order: ' + order);
         }
-        if (update !== false) this._onChangeCallback();
+        if (update === true) this._onChangeCallback();
         return this;
     }
     setFromAxisAngle(axis, angle) {
@@ -330,8 +338,7 @@ class Quaternion {
             this._x = s * x + t * this._x;
             this._y = s * y + t * this._y;
             this._z = s * z + t * this._z;
-            this.normalize();
-            this._onChangeCallback();
+            this.normalize(); // normalize calls _onChangeCallback()
             return this;
         }
         const sinHalfTheta = Math.sqrt(sqrSinHalfTheta);
@@ -348,15 +355,16 @@ class Quaternion {
         return this.copy(qa).slerp(qb, t);
     }
     random() {
-        // Derived from http://planning.cs.uiuc.edu/node198.html
-        // Note, this source uses w, x, y, z ordering,
-        // so we swap the order below.
-        const u1 = Math.random();
-        const sqrt1u1 = Math.sqrt(1 - u1);
-        const sqrtu1 = Math.sqrt(u1);
-        const u2 = 2 * Math.PI * Math.random();
-        const u3 = 2 * Math.PI * Math.random();
-        return this.set(sqrt1u1 * Math.cos(u2), sqrtu1 * Math.sin(u3), sqrtu1 * Math.cos(u3), sqrt1u1 * Math.sin(u2));
+        // sets this quaternion to a uniform random unit quaternnion
+        // Ken Shoemake
+        // Uniform random rotations
+        // D. Kirk, editor, Graphics Gems III, pages 124-132. Academic Press, New York, 1992.
+        const theta1 = 2 * Math.PI * Math.random();
+        const theta2 = 2 * Math.PI * Math.random();
+        const x0 = Math.random();
+        const r1 = Math.sqrt(1 - x0);
+        const r2 = Math.sqrt(x0);
+        return this.set(r1 * Math.sin(theta1), r1 * Math.cos(theta1), r2 * Math.sin(theta2), r2 * Math.cos(theta2));
     }
     equals(quaternion) {
         return quaternion._x === this._x && quaternion._y === this._y && quaternion._z === this._z && quaternion._w === this._w;
@@ -384,6 +392,7 @@ class Quaternion {
         this._y = attribute.getY(index);
         this._z = attribute.getZ(index);
         this._w = attribute.getW(index);
+        this._onChangeCallback();
         return this;
     }
     toJSON() {
@@ -399,13 +408,6 @@ class Quaternion {
         yield this._y;
         yield this._z;
         yield this._w;
-    }
-    constructor(x = 0, y = 0, z = 0, w = 1){
-        this.isQuaternion = true;
-        this._x = x;
-        this._y = y;
-        this._z = z;
-        this._w = w;
     }
 }
 

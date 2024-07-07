@@ -1,9 +1,65 @@
+import { Color } from '../math/Color.js';
 import { EventDispatcher } from '../core/EventDispatcher.js';
 import { NormalBlending, FrontSide, SrcAlphaFactor, OneMinusSrcAlphaFactor, AddEquation, LessEqualDepth, AlwaysStencilFunc, KeepStencilOp } from '../constants.js';
 import { generateUUID } from '../math/MathUtils.js';
+import '../math/ColorManagement.js';
+import '../math/Matrix3.js';
 
 let _materialId = 0;
 class Material extends EventDispatcher {
+    constructor(){
+        super();
+        this.isMaterial = true;
+        Object.defineProperty(this, 'id', {
+            value: _materialId++
+        });
+        this.uuid = generateUUID();
+        this.name = '';
+        this.type = 'Material';
+        this.blending = NormalBlending;
+        this.side = FrontSide;
+        this.vertexColors = false;
+        this.opacity = 1;
+        this.transparent = false;
+        this.alphaHash = false;
+        this.blendSrc = SrcAlphaFactor;
+        this.blendDst = OneMinusSrcAlphaFactor;
+        this.blendEquation = AddEquation;
+        this.blendSrcAlpha = null;
+        this.blendDstAlpha = null;
+        this.blendEquationAlpha = null;
+        this.blendColor = new Color(0, 0, 0);
+        this.blendAlpha = 0;
+        this.depthFunc = LessEqualDepth;
+        this.depthTest = true;
+        this.depthWrite = true;
+        this.stencilWriteMask = 0xff;
+        this.stencilFunc = AlwaysStencilFunc;
+        this.stencilRef = 0;
+        this.stencilFuncMask = 0xff;
+        this.stencilFail = KeepStencilOp;
+        this.stencilZFail = KeepStencilOp;
+        this.stencilZPass = KeepStencilOp;
+        this.stencilWrite = false;
+        this.clippingPlanes = null;
+        this.clipIntersection = false;
+        this.clipShadows = false;
+        this.shadowSide = null;
+        this.colorWrite = true;
+        this.precision = null; // override the renderer's default precision for this material
+        this.polygonOffset = false;
+        this.polygonOffsetFactor = 0;
+        this.polygonOffsetUnits = 0;
+        this.dithering = false;
+        this.alphaToCoverage = false;
+        this.premultipliedAlpha = false;
+        this.forceSinglePass = false;
+        this.visible = true;
+        this.toneMapped = true;
+        this.userData = {};
+        this.version = 0;
+        this._alphaTest = 0;
+    }
     get alphaTest() {
         return this._alphaTest;
     }
@@ -13,8 +69,6 @@ class Material extends EventDispatcher {
         }
         this._alphaTest = value;
     }
-    onBuild() {}
-    onBeforeRender() {}
     onBeforeCompile() {}
     customProgramCacheKey() {
         return this.onBeforeCompile.toString();
@@ -67,7 +121,7 @@ class Material extends EventDispatcher {
         if (this.sheenColor && this.sheenColor.isColor) data.sheenColor = this.sheenColor.getHex();
         if (this.sheenRoughness !== undefined) data.sheenRoughness = this.sheenRoughness;
         if (this.emissive && this.emissive.isColor) data.emissive = this.emissive.getHex();
-        if (this.emissiveIntensity && this.emissiveIntensity !== 1) data.emissiveIntensity = this.emissiveIntensity;
+        if (this.emissiveIntensity !== undefined && this.emissiveIntensity !== 1) data.emissiveIntensity = this.emissiveIntensity;
         if (this.specular && this.specular.isColor) data.specular = this.specular.getHex();
         if (this.specularIntensity !== undefined) data.specularIntensity = this.specularIntensity;
         if (this.specularColor && this.specularColor.isColor) data.specularColor = this.specularColor.getHex();
@@ -84,6 +138,7 @@ class Material extends EventDispatcher {
             data.clearcoatNormalMap = this.clearcoatNormalMap.toJSON(meta).uuid;
             data.clearcoatNormalScale = this.clearcoatNormalScale.toArray();
         }
+        if (this.dispersion !== undefined) data.dispersion = this.dispersion;
         if (this.iridescence !== undefined) data.iridescence = this.iridescence;
         if (this.iridescenceIOR !== undefined) data.iridescenceIOR = this.iridescenceIOR;
         if (this.iridescenceThicknessRange !== undefined) data.iridescenceThicknessRange = this.iridescenceThicknessRange;
@@ -133,6 +188,7 @@ class Material extends EventDispatcher {
             data.envMap = this.envMap.toJSON(meta).uuid;
             if (this.combine !== undefined) data.combine = this.combine;
         }
+        if (this.envMapRotation !== undefined) data.envMapRotation = this.envMapRotation.toArray();
         if (this.envMapIntensity !== undefined) data.envMapIntensity = this.envMapIntensity;
         if (this.reflectivity !== undefined) data.reflectivity = this.reflectivity;
         if (this.refractionRatio !== undefined) data.refractionRatio = this.refractionRatio;
@@ -153,18 +209,26 @@ class Material extends EventDispatcher {
         if (this.vertexColors === true) data.vertexColors = true;
         if (this.opacity < 1) data.opacity = this.opacity;
         if (this.transparent === true) data.transparent = true;
-        data.depthFunc = this.depthFunc;
-        data.depthTest = this.depthTest;
-        data.depthWrite = this.depthWrite;
-        data.colorWrite = this.colorWrite;
-        data.stencilWrite = this.stencilWrite;
-        data.stencilWriteMask = this.stencilWriteMask;
-        data.stencilFunc = this.stencilFunc;
-        data.stencilRef = this.stencilRef;
-        data.stencilFuncMask = this.stencilFuncMask;
-        data.stencilFail = this.stencilFail;
-        data.stencilZFail = this.stencilZFail;
-        data.stencilZPass = this.stencilZPass;
+        if (this.blendSrc !== SrcAlphaFactor) data.blendSrc = this.blendSrc;
+        if (this.blendDst !== OneMinusSrcAlphaFactor) data.blendDst = this.blendDst;
+        if (this.blendEquation !== AddEquation) data.blendEquation = this.blendEquation;
+        if (this.blendSrcAlpha !== null) data.blendSrcAlpha = this.blendSrcAlpha;
+        if (this.blendDstAlpha !== null) data.blendDstAlpha = this.blendDstAlpha;
+        if (this.blendEquationAlpha !== null) data.blendEquationAlpha = this.blendEquationAlpha;
+        if (this.blendColor && this.blendColor.isColor) data.blendColor = this.blendColor.getHex();
+        if (this.blendAlpha !== 0) data.blendAlpha = this.blendAlpha;
+        if (this.depthFunc !== LessEqualDepth) data.depthFunc = this.depthFunc;
+        if (this.depthTest === false) data.depthTest = this.depthTest;
+        if (this.depthWrite === false) data.depthWrite = this.depthWrite;
+        if (this.colorWrite === false) data.colorWrite = this.colorWrite;
+        if (this.stencilWriteMask !== 0xff) data.stencilWriteMask = this.stencilWriteMask;
+        if (this.stencilFunc !== AlwaysStencilFunc) data.stencilFunc = this.stencilFunc;
+        if (this.stencilRef !== 0) data.stencilRef = this.stencilRef;
+        if (this.stencilFuncMask !== 0xff) data.stencilFuncMask = this.stencilFuncMask;
+        if (this.stencilFail !== KeepStencilOp) data.stencilFail = this.stencilFail;
+        if (this.stencilZFail !== KeepStencilOp) data.stencilZFail = this.stencilZFail;
+        if (this.stencilZPass !== KeepStencilOp) data.stencilZPass = this.stencilZPass;
+        if (this.stencilWrite === true) data.stencilWrite = this.stencilWrite;
         // rotation (SpriteMaterial)
         if (this.rotation !== undefined && this.rotation !== 0) data.rotation = this.rotation;
         if (this.polygonOffset === true) data.polygonOffset = true;
@@ -223,6 +287,8 @@ class Material extends EventDispatcher {
         this.blendSrcAlpha = source.blendSrcAlpha;
         this.blendDstAlpha = source.blendDstAlpha;
         this.blendEquationAlpha = source.blendEquationAlpha;
+        this.blendColor.copy(source.blendColor);
+        this.blendAlpha = source.blendAlpha;
         this.depthFunc = source.depthFunc;
         this.depthTest = source.depthTest;
         this.depthWrite = source.depthWrite;
@@ -271,56 +337,11 @@ class Material extends EventDispatcher {
     set needsUpdate(value) {
         if (value === true) this.version++;
     }
-    constructor(){
-        super();
-        this.isMaterial = true;
-        Object.defineProperty(this, 'id', {
-            value: _materialId++
-        });
-        this.uuid = generateUUID();
-        this.name = '';
-        this.type = 'Material';
-        this.blending = NormalBlending;
-        this.side = FrontSide;
-        this.vertexColors = false;
-        this.opacity = 1;
-        this.transparent = false;
-        this.alphaHash = false;
-        this.blendSrc = SrcAlphaFactor;
-        this.blendDst = OneMinusSrcAlphaFactor;
-        this.blendEquation = AddEquation;
-        this.blendSrcAlpha = null;
-        this.blendDstAlpha = null;
-        this.blendEquationAlpha = null;
-        this.depthFunc = LessEqualDepth;
-        this.depthTest = true;
-        this.depthWrite = true;
-        this.stencilWriteMask = 0xff;
-        this.stencilFunc = AlwaysStencilFunc;
-        this.stencilRef = 0;
-        this.stencilFuncMask = 0xff;
-        this.stencilFail = KeepStencilOp;
-        this.stencilZFail = KeepStencilOp;
-        this.stencilZPass = KeepStencilOp;
-        this.stencilWrite = false;
-        this.clippingPlanes = null;
-        this.clipIntersection = false;
-        this.clipShadows = false;
-        this.shadowSide = null;
-        this.colorWrite = true;
-        this.precision = null; // override the renderer's default precision for this material
-        this.polygonOffset = false;
-        this.polygonOffsetFactor = 0;
-        this.polygonOffsetUnits = 0;
-        this.dithering = false;
-        this.alphaToCoverage = false;
-        this.premultipliedAlpha = false;
-        this.forceSinglePass = false;
-        this.visible = true;
-        this.toneMapped = true;
-        this.userData = {};
-        this.version = 0;
-        this._alphaTest = 0;
+    onBuild() {
+        console.warn('Material: onBuild() has been removed.'); // @deprecated, r166
+    }
+    onBeforeRender() {
+        console.warn('Material: onBeforeRender() has been removed.'); // @deprecated, r166
     }
 }
 

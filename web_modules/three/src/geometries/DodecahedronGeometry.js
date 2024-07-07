@@ -9,18 +9,15 @@ import '../core/EventDispatcher.js';
 import '../core/BufferAttribute.js';
 import '../constants.js';
 import '../extras/DataUtils.js';
+import '../utils.js';
 import '../math/Sphere.js';
 import '../core/Object3D.js';
 import '../math/Matrix4.js';
 import '../math/Euler.js';
 import '../core/Layers.js';
 import '../math/Matrix3.js';
-import '../utils.js';
 
 class DodecahedronGeometry extends PolyhedronGeometry {
-    static fromJSON(data) {
-        return new DodecahedronGeometry(data.radius, data.detail);
-    }
     constructor(radius = 1, detail = 0){
         const t = (1 + Math.sqrt(5)) / 2;
         const r = 1 / t;
@@ -206,6 +203,9 @@ class DodecahedronGeometry extends PolyhedronGeometry {
             radius: radius,
             detail: detail
         };
+    }
+    static fromJSON(data) {
+        return new DodecahedronGeometry(data.radius, data.detail);
     }
 }
 

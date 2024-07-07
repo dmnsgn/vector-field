@@ -6,6 +6,8 @@ import alphatest_fragment from './ShaderChunk/alphatest_fragment.glsl.js';
 import alphatest_pars_fragment from './ShaderChunk/alphatest_pars_fragment.glsl.js';
 import aomap_fragment from './ShaderChunk/aomap_fragment.glsl.js';
 import aomap_pars_fragment from './ShaderChunk/aomap_pars_fragment.glsl.js';
+import batching_pars_vertex from './ShaderChunk/batching_pars_vertex.glsl.js';
+import batching_vertex from './ShaderChunk/batching_vertex.glsl.js';
 import begin_vertex from './ShaderChunk/begin_vertex.glsl.js';
 import beginnormal_vertex from './ShaderChunk/beginnormal_vertex.glsl.js';
 import bsdfs from './ShaderChunk/bsdfs.glsl.js';
@@ -38,7 +40,6 @@ import fog_pars_vertex from './ShaderChunk/fog_pars_vertex.glsl.js';
 import fog_fragment from './ShaderChunk/fog_fragment.glsl.js';
 import fog_pars_fragment from './ShaderChunk/fog_pars_fragment.glsl.js';
 import gradientmap_pars_fragment from './ShaderChunk/gradientmap_pars_fragment.glsl.js';
-import lightmap_fragment from './ShaderChunk/lightmap_fragment.glsl.js';
 import lightmap_pars_fragment from './ShaderChunk/lightmap_pars_fragment.glsl.js';
 import lights_lambert_fragment from './ShaderChunk/lights_lambert_fragment.glsl.js';
 import lights_lambert_pars_fragment from './ShaderChunk/lights_lambert_pars_fragment.glsl.js';
@@ -63,6 +64,7 @@ import map_particle_fragment from './ShaderChunk/map_particle_fragment.glsl.js';
 import map_particle_pars_fragment from './ShaderChunk/map_particle_pars_fragment.glsl.js';
 import metalnessmap_fragment from './ShaderChunk/metalnessmap_fragment.glsl.js';
 import metalnessmap_pars_fragment from './ShaderChunk/metalnessmap_pars_fragment.glsl.js';
+import morphinstance_vertex from './ShaderChunk/morphinstance_vertex.glsl.js';
 import morphcolor_vertex from './ShaderChunk/morphcolor_vertex.glsl.js';
 import morphnormal_vertex from './ShaderChunk/morphnormal_vertex.glsl.js';
 import morphtarget_pars_vertex from './ShaderChunk/morphtarget_pars_vertex.glsl.js';
@@ -130,6 +132,8 @@ const ShaderChunk = {
     alphatest_pars_fragment: alphatest_pars_fragment,
     aomap_fragment: aomap_fragment,
     aomap_pars_fragment: aomap_pars_fragment,
+    batching_pars_vertex: batching_pars_vertex,
+    batching_vertex: batching_vertex,
     begin_vertex: begin_vertex,
     beginnormal_vertex: beginnormal_vertex,
     bsdfs: bsdfs,
@@ -163,7 +167,6 @@ const ShaderChunk = {
     fog_fragment: fog_fragment,
     fog_pars_fragment: fog_pars_fragment,
     gradientmap_pars_fragment: gradientmap_pars_fragment,
-    lightmap_fragment: lightmap_fragment,
     lightmap_pars_fragment: lightmap_pars_fragment,
     lights_lambert_fragment: lights_lambert_fragment,
     lights_lambert_pars_fragment: lights_lambert_pars_fragment,
@@ -187,6 +190,7 @@ const ShaderChunk = {
     map_particle_pars_fragment: map_particle_pars_fragment,
     metalnessmap_fragment: metalnessmap_fragment,
     metalnessmap_pars_fragment: metalnessmap_pars_fragment,
+    morphinstance_vertex: morphinstance_vertex,
     morphcolor_vertex: morphcolor_vertex,
     morphnormal_vertex: morphnormal_vertex,
     morphtarget_pars_vertex: morphtarget_pars_vertex,

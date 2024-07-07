@@ -22,26 +22,6 @@ const _projScreenMatrix = /*@__PURE__*/ new Matrix4();
 const _lightPositionWorld = /*@__PURE__*/ new Vector3();
 const _lookTarget = /*@__PURE__*/ new Vector3();
 class PointLightShadow extends LightShadow {
-    updateMatrices(light, viewportIndex) {
-        if (viewportIndex === void 0) viewportIndex = 0;
-        const camera = this.camera;
-        const shadowMatrix = this.matrix;
-        const far = light.distance || camera.far;
-        if (far !== camera.far) {
-            camera.far = far;
-            camera.updateProjectionMatrix();
-        }
-        _lightPositionWorld.setFromMatrixPosition(light.matrixWorld);
-        camera.position.copy(_lightPositionWorld);
-        _lookTarget.copy(camera.position);
-        _lookTarget.add(this._cubeDirections[viewportIndex]);
-        camera.up.copy(this._cubeUps[viewportIndex]);
-        camera.lookAt(_lookTarget);
-        camera.updateMatrixWorld();
-        shadowMatrix.makeTranslation(-_lightPositionWorld.x, -_lightPositionWorld.y, -_lightPositionWorld.z);
-        _projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-        this._frustum.setFromProjectionMatrix(_projScreenMatrix);
-    }
     constructor(){
         super(new PerspectiveCamera(90, 1, 0.5, 500));
         this.isPointLightShadow = true;
@@ -89,6 +69,26 @@ class PointLightShadow extends LightShadow {
             new Vector3(0, 0, 1),
             new Vector3(0, 0, -1)
         ];
+    }
+    updateMatrices(light, viewportIndex) {
+        if (viewportIndex === void 0) viewportIndex = 0;
+        const camera = this.camera;
+        const shadowMatrix = this.matrix;
+        const far = light.distance || camera.far;
+        if (far !== camera.far) {
+            camera.far = far;
+            camera.updateProjectionMatrix();
+        }
+        _lightPositionWorld.setFromMatrixPosition(light.matrixWorld);
+        camera.position.copy(_lightPositionWorld);
+        _lookTarget.copy(camera.position);
+        _lookTarget.add(this._cubeDirections[viewportIndex]);
+        camera.up.copy(this._cubeUps[viewportIndex]);
+        camera.lookAt(_lookTarget);
+        camera.updateMatrixWorld();
+        shadowMatrix.makeTranslation(-_lightPositionWorld.x, -_lightPositionWorld.y, -_lightPositionWorld.z);
+        _projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+        this._frustum.setFromProjectionMatrix(_projScreenMatrix);
     }
 }
 

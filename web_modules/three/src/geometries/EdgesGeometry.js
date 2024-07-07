@@ -22,11 +22,6 @@ const _v1 = /*@__PURE__*/ new Vector3();
 const _normal = /*@__PURE__*/ new Vector3();
 const _triangle = /*@__PURE__*/ new Triangle();
 class EdgesGeometry extends BufferGeometry {
-    copy(source) {
-        super.copy(source);
-        this.parameters = Object.assign({}, source.parameters);
-        return this;
-    }
     constructor(geometry = null, thresholdAngle = 1){
         super();
         this.type = 'EdgesGeometry';
@@ -64,7 +59,7 @@ class EdgesGeometry extends BufferGeometry {
                     indexArr[1] = i + 1;
                     indexArr[2] = i + 2;
                 }
-                const { a , b , c  } = _triangle;
+                const { a, b, c } = _triangle;
                 a.fromBufferAttribute(positionAttr, indexArr[0]);
                 b.fromBufferAttribute(positionAttr, indexArr[1]);
                 c.fromBufferAttribute(positionAttr, indexArr[2]);
@@ -108,7 +103,7 @@ class EdgesGeometry extends BufferGeometry {
             // iterate over all remaining, unmatched edges and add them to the vertex array
             for(const key in edgeData){
                 if (edgeData[key]) {
-                    const { index0 , index1  } = edgeData[key];
+                    const { index0, index1 } = edgeData[key];
                     _v0.fromBufferAttribute(positionAttr, index0);
                     _v1.fromBufferAttribute(positionAttr, index1);
                     vertices.push(_v0.x, _v0.y, _v0.z);
@@ -117,6 +112,11 @@ class EdgesGeometry extends BufferGeometry {
             }
             this.setAttribute('position', new Float32BufferAttribute(vertices, 3));
         }
+    }
+    copy(source) {
+        super.copy(source);
+        this.parameters = Object.assign({}, source.parameters);
+        return this;
     }
 }
 

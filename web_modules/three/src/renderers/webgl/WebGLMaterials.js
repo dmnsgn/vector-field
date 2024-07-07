@@ -1,8 +1,15 @@
 import { BackSide } from '../../constants.js';
 import { getUnlitUniformColorSpace } from '../shaders/UniformsUtils.js';
+import { Euler } from '../../math/Euler.js';
+import { Matrix4 } from '../../math/Matrix4.js';
 import '../../math/ColorManagement.js';
 import '../../math/Matrix3.js';
+import '../../math/Quaternion.js';
+import '../../math/MathUtils.js';
+import '../../math/Vector3.js';
 
+const _e1 = /*@__PURE__*/ new Euler();
+const _m1 = /*@__PURE__*/ new Matrix4();
 function WebGLMaterials(renderer, properties) {
     function refreshTransformUniform(map, uniform) {
         if (map.matrixAutoUpdate === true) {
@@ -111,9 +118,22 @@ function WebGLMaterials(renderer, properties) {
         if (material.alphaTest > 0) {
             uniforms.alphaTest.value = material.alphaTest;
         }
-        const envMap = properties.get(material).envMap;
+        const materialProperties = properties.get(material);
+        const envMap = materialProperties.envMap;
+        const envMapRotation = materialProperties.envMapRotation;
         if (envMap) {
             uniforms.envMap.value = envMap;
+            _e1.copy(envMapRotation);
+            // accommodate left-handed frame
+            _e1.x *= -1;
+            _e1.y *= -1;
+            _e1.z *= -1;
+            if (envMap.isCubeTexture && envMap.isRenderTargetTexture === false) {
+                // environment maps which are not cube render targets or PMREMs follow a different convention
+                _e1.y *= -1;
+                _e1.z *= -1;
+            }
+            uniforms.envMapRotation.value.setFromMatrix4(_m1.makeRotationFromEuler(_e1));
             uniforms.flipEnvMap.value = envMap.isCubeTexture && envMap.isRenderTargetTexture === false ? -1 : 1;
             uniforms.reflectivity.value = material.reflectivity;
             uniforms.ior.value = material.ior;
@@ -121,9 +141,7 @@ function WebGLMaterials(renderer, properties) {
         }
         if (material.lightMap) {
             uniforms.lightMap.value = material.lightMap;
-            // artist-friendly light intensity scaling factor
-            const scaleFactor = renderer._useLegacyLights === true ? Math.PI : 1;
-            uniforms.lightMapIntensity.value = material.lightMapIntensity * scaleFactor;
+            uniforms.lightMapIntensity.value = material.lightMapIntensity;
             refreshTransformUniform(material.lightMap, uniforms.lightMapTransform);
         }
         if (material.aoMap) {
@@ -198,8 +216,7 @@ function WebGLMaterials(renderer, properties) {
             uniforms.roughnessMap.value = material.roughnessMap;
             refreshTransformUniform(material.roughnessMap, uniforms.roughnessMapTransform);
         }
-        const envMap = properties.get(material).envMap;
-        if (envMap) {
+        if (material.envMap) {
             //uniforms.envMap.value = material.envMap; // part of uniforms common
             uniforms.envMapIntensity.value = material.envMapIntensity;
         }
@@ -237,6 +254,9 @@ function WebGLMaterials(renderer, properties) {
                     uniforms.clearcoatNormalScale.value.negate();
                 }
             }
+        }
+        if (material.dispersion > 0) {
+            uniforms.dispersion.value = material.dispersion;
         }
         if (material.iridescence > 0) {
             uniforms.iridescence.value = material.iridescence;

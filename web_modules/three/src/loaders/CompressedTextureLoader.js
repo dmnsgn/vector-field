@@ -19,6 +19,9 @@ import '../math/ColorManagement.js';
  *
  * Sub classes have to implement the parse() method which will be used in load().
  */ class CompressedTextureLoader extends Loader {
+    constructor(manager){
+        super(manager);
+    }
     load(url, onLoad, onProgress, onError) {
         const scope = this;
         const images = [];
@@ -84,9 +87,6 @@ import '../math/ColorManagement.js';
             }, onProgress, onError);
         }
         return texture;
-    }
-    constructor(manager){
-        super(manager);
     }
 }
 

@@ -1,8 +1,14 @@
 import { InterleavedBuffer } from './InterleavedBuffer.js';
 import '../math/MathUtils.js';
 import '../constants.js';
+import '../utils.js';
 
 class InstancedInterleavedBuffer extends InterleavedBuffer {
+    constructor(array, stride, meshPerAttribute = 1){
+        super(array, stride);
+        this.isInstancedInterleavedBuffer = true;
+        this.meshPerAttribute = meshPerAttribute;
+    }
     copy(source) {
         super.copy(source);
         this.meshPerAttribute = source.meshPerAttribute;
@@ -18,11 +24,6 @@ class InstancedInterleavedBuffer extends InterleavedBuffer {
         json.isInstancedInterleavedBuffer = true;
         json.meshPerAttribute = this.meshPerAttribute;
         return json;
-    }
-    constructor(array, stride, meshPerAttribute = 1){
-        super(array, stride);
-        this.isInstancedInterleavedBuffer = true;
-        this.meshPerAttribute = meshPerAttribute;
     }
 }
 

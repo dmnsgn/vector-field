@@ -23,15 +23,6 @@ import '../cameras/OrthographicCamera.js';
 import '../cameras/Camera.js';
 
 class DirectionalLight extends Light {
-    dispose() {
-        this.shadow.dispose();
-    }
-    copy(source) {
-        super.copy(source);
-        this.target = source.target.clone();
-        this.shadow = source.shadow.clone();
-        return this;
-    }
     constructor(color, intensity){
         super(color, intensity);
         this.isDirectionalLight = true;
@@ -40,6 +31,15 @@ class DirectionalLight extends Light {
         this.updateMatrix();
         this.target = new Object3D();
         this.shadow = new DirectionalLightShadow();
+    }
+    dispose() {
+        this.shadow.dispose();
+    }
+    copy(source) {
+        super.copy(source);
+        this.target = source.target.clone();
+        this.shadow = source.shadow.clone();
+        return this;
     }
 }
 

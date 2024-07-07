@@ -1,6 +1,11 @@
 import { clamp } from './MathUtils.js';
 
 class Vector2 {
+    constructor(x = 0, y = 0){
+        Vector2.prototype.isVector2 = true;
+        this.x = x;
+        this.y = y;
+    }
     get width() {
         return this.x;
     }
@@ -262,11 +267,6 @@ class Vector2 {
     *[Symbol.iterator]() {
         yield this.x;
         yield this.y;
-    }
-    constructor(x = 0, y = 0){
-        Vector2.prototype.isVector2 = true;
-        this.x = x;
-        this.y = y;
     }
 }
 

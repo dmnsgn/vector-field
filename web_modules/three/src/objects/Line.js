@@ -21,12 +21,22 @@ import '../math/Vector2.js';
 import '../utils.js';
 import '../extras/DataUtils.js';
 
-const _start = /*@__PURE__*/ new Vector3();
-const _end = /*@__PURE__*/ new Vector3();
+const _vStart = /*@__PURE__*/ new Vector3();
+const _vEnd = /*@__PURE__*/ new Vector3();
 const _inverseMatrix = /*@__PURE__*/ new Matrix4();
 const _ray = /*@__PURE__*/ new Ray();
 const _sphere = /*@__PURE__*/ new Sphere();
+const _intersectPointOnRay = /*@__PURE__*/ new Vector3();
+const _intersectPointOnSegment = /*@__PURE__*/ new Vector3();
 class Line extends Object3D {
+    constructor(geometry = new BufferGeometry(), material = new LineBasicMaterial()){
+        super();
+        this.isLine = true;
+        this.type = 'Line';
+        this.geometry = geometry;
+        this.material = material;
+        this.updateMorphTargets();
+    }
     copy(source, recursive) {
         super.copy(source, recursive);
         this.material = Array.isArray(source.material) ? source.material.slice() : source.material;
@@ -42,10 +52,10 @@ class Line extends Object3D {
                 0
             ];
             for(let i = 1, l = positionAttribute.count; i < l; i++){
-                _start.fromBufferAttribute(positionAttribute, i - 1);
-                _end.fromBufferAttribute(positionAttribute, i);
+                _vStart.fromBufferAttribute(positionAttribute, i - 1);
+                _vEnd.fromBufferAttribute(positionAttribute, i);
                 lineDistances[i] = lineDistances[i - 1];
-                lineDistances[i] += _start.distanceTo(_end);
+                lineDistances[i] += _vStart.distanceTo(_vEnd);
             }
             geometry.setAttribute('lineDistance', new Float32BufferAttribute(lineDistances, 1));
         } else {
@@ -69,10 +79,6 @@ class Line extends Object3D {
         _ray.copy(raycaster.ray).applyMatrix4(_inverseMatrix);
         const localThreshold = threshold / ((this.scale.x + this.scale.y + this.scale.z) / 3);
         const localThresholdSq = localThreshold * localThreshold;
-        const vStart = new Vector3();
-        const vEnd = new Vector3();
-        const interSegment = new Vector3();
-        const interRay = new Vector3();
         const step = this.isLineSegments ? 2 : 1;
         const index = geometry.index;
         const attributes = geometry.attributes;
@@ -83,45 +89,33 @@ class Line extends Object3D {
             for(let i = start, l = end - 1; i < l; i += step){
                 const a = index.getX(i);
                 const b = index.getX(i + 1);
-                vStart.fromBufferAttribute(positionAttribute, a);
-                vEnd.fromBufferAttribute(positionAttribute, b);
-                const distSq = _ray.distanceSqToSegment(vStart, vEnd, interRay, interSegment);
-                if (distSq > localThresholdSq) continue;
-                interRay.applyMatrix4(this.matrixWorld); //Move back to world space for distance calculation
-                const distance = raycaster.ray.origin.distanceTo(interRay);
-                if (distance < raycaster.near || distance > raycaster.far) continue;
-                intersects.push({
-                    distance: distance,
-                    // What do we want? intersection point on the ray or on the segment??
-                    // point: raycaster.ray.at( distance ),
-                    point: interSegment.clone().applyMatrix4(this.matrixWorld),
-                    index: i,
-                    face: null,
-                    faceIndex: null,
-                    object: this
-                });
+                const intersect = checkIntersection(this, raycaster, _ray, localThresholdSq, a, b);
+                if (intersect) {
+                    intersects.push(intersect);
+                }
+            }
+            if (this.isLineLoop) {
+                const a = index.getX(end - 1);
+                const b = index.getX(start);
+                const intersect = checkIntersection(this, raycaster, _ray, localThresholdSq, a, b);
+                if (intersect) {
+                    intersects.push(intersect);
+                }
             }
         } else {
             const start = Math.max(0, drawRange.start);
             const end = Math.min(positionAttribute.count, drawRange.start + drawRange.count);
             for(let i = start, l = end - 1; i < l; i += step){
-                vStart.fromBufferAttribute(positionAttribute, i);
-                vEnd.fromBufferAttribute(positionAttribute, i + 1);
-                const distSq = _ray.distanceSqToSegment(vStart, vEnd, interRay, interSegment);
-                if (distSq > localThresholdSq) continue;
-                interRay.applyMatrix4(this.matrixWorld); //Move back to world space for distance calculation
-                const distance = raycaster.ray.origin.distanceTo(interRay);
-                if (distance < raycaster.near || distance > raycaster.far) continue;
-                intersects.push({
-                    distance: distance,
-                    // What do we want? intersection point on the ray or on the segment??
-                    // point: raycaster.ray.at( distance ),
-                    point: interSegment.clone().applyMatrix4(this.matrixWorld),
-                    index: i,
-                    face: null,
-                    faceIndex: null,
-                    object: this
-                });
+                const intersect = checkIntersection(this, raycaster, _ray, localThresholdSq, i, i + 1);
+                if (intersect) {
+                    intersects.push(intersect);
+                }
+            }
+            if (this.isLineLoop) {
+                const intersect = checkIntersection(this, raycaster, _ray, localThresholdSq, end - 1, start);
+                if (intersect) {
+                    intersects.push(intersect);
+                }
             }
         }
     }
@@ -142,14 +136,26 @@ class Line extends Object3D {
             }
         }
     }
-    constructor(geometry = new BufferGeometry(), material = new LineBasicMaterial()){
-        super();
-        this.isLine = true;
-        this.type = 'Line';
-        this.geometry = geometry;
-        this.material = material;
-        this.updateMorphTargets();
-    }
+}
+function checkIntersection(object, raycaster, ray, thresholdSq, a, b) {
+    const positionAttribute = object.geometry.attributes.position;
+    _vStart.fromBufferAttribute(positionAttribute, a);
+    _vEnd.fromBufferAttribute(positionAttribute, b);
+    const distSq = ray.distanceSqToSegment(_vStart, _vEnd, _intersectPointOnRay, _intersectPointOnSegment);
+    if (distSq > thresholdSq) return;
+    _intersectPointOnRay.applyMatrix4(object.matrixWorld); // Move back to world space for distance calculation
+    const distance = raycaster.ray.origin.distanceTo(_intersectPointOnRay);
+    if (distance < raycaster.near || distance > raycaster.far) return;
+    return {
+        distance: distance,
+        // What do we want? intersection point on the ray or on the segment??
+        // point: raycaster.ray.at( distance ),
+        point: _intersectPointOnSegment.clone().applyMatrix4(object.matrixWorld),
+        index: a,
+        face: null,
+        faceIndex: null,
+        object: object
+    };
 }
 
 export { Line };

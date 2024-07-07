@@ -11,13 +11,13 @@ import '../math/Vector2.js';
 import '../math/MathUtils.js';
 import '../constants.js';
 import '../extras/DataUtils.js';
+import '../utils.js';
 import '../math/Box3.js';
 import '../math/Quaternion.js';
 import '../core/EventDispatcher.js';
 import '../math/Sphere.js';
 import '../math/Matrix4.js';
 import '../math/Matrix3.js';
-import '../utils.js';
 import '../math/Euler.js';
 import '../core/Layers.js';
 import '../materials/Material.js';
@@ -29,6 +29,39 @@ import '../math/Triangle.js';
 const _axis = /*@__PURE__*/ new Vector3();
 let _lineGeometry, _coneGeometry;
 class ArrowHelper extends Object3D {
+    // dir is assumed to be normalized
+    constructor(dir = new Vector3(0, 0, 1), origin = new Vector3(0, 0, 0), length = 1, color = 0xffff00, headLength = length * 0.2, headWidth = headLength * 0.2){
+        super();
+        this.type = 'ArrowHelper';
+        if (_lineGeometry === undefined) {
+            _lineGeometry = new BufferGeometry();
+            _lineGeometry.setAttribute('position', new Float32BufferAttribute([
+                0,
+                0,
+                0,
+                0,
+                1,
+                0
+            ], 3));
+            _coneGeometry = new CylinderGeometry(0, 0.5, 1, 5, 1);
+            _coneGeometry.translate(0, -0.5, 0);
+        }
+        this.position.copy(origin);
+        this.line = new Line(_lineGeometry, new LineBasicMaterial({
+            color: color,
+            toneMapped: false
+        }));
+        this.line.matrixAutoUpdate = false;
+        this.add(this.line);
+        this.cone = new Mesh(_coneGeometry, new MeshBasicMaterial({
+            color: color,
+            toneMapped: false
+        }));
+        this.cone.matrixAutoUpdate = false;
+        this.add(this.cone);
+        this.setDirection(dir);
+        this.setLength(length, headLength, headWidth);
+    }
     setDirection(dir) {
         // dir is assumed to be normalized
         if (dir.y > 0.99999) {
@@ -65,39 +98,6 @@ class ArrowHelper extends Object3D {
         this.line.material.dispose();
         this.cone.geometry.dispose();
         this.cone.material.dispose();
-    }
-    // dir is assumed to be normalized
-    constructor(dir = new Vector3(0, 0, 1), origin = new Vector3(0, 0, 0), length = 1, color = 0xffff00, headLength = length * 0.2, headWidth = headLength * 0.2){
-        super();
-        this.type = 'ArrowHelper';
-        if (_lineGeometry === undefined) {
-            _lineGeometry = new BufferGeometry();
-            _lineGeometry.setAttribute('position', new Float32BufferAttribute([
-                0,
-                0,
-                0,
-                0,
-                1,
-                0
-            ], 3));
-            _coneGeometry = new CylinderGeometry(0, 0.5, 1, 5, 1);
-            _coneGeometry.translate(0, -0.5, 0);
-        }
-        this.position.copy(origin);
-        this.line = new Line(_lineGeometry, new LineBasicMaterial({
-            color: color,
-            toneMapped: false
-        }));
-        this.line.matrixAutoUpdate = false;
-        this.add(this.line);
-        this.cone = new Mesh(_coneGeometry, new MeshBasicMaterial({
-            color: color,
-            toneMapped: false
-        }));
-        this.cone.matrixAutoUpdate = false;
-        this.add(this.cone);
-        this.setDirection(dir);
-        this.setLength(length, headLength, headWidth);
     }
 }
 

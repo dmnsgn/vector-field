@@ -4,6 +4,30 @@ import './MathUtils.js';
 import './Quaternion.js';
 
 class Matrix4 {
+    constructor(n11, n12, n13, n14, n21, n22, n23, n24, n31, n32, n33, n34, n41, n42, n43, n44){
+        Matrix4.prototype.isMatrix4 = true;
+        this.elements = [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+        ];
+        if (n11 !== undefined) {
+            this.set(n11, n12, n13, n14, n21, n22, n23, n24, n31, n32, n33, n34, n41, n42, n43, n44);
+        }
+    }
     set(n11, n12, n13, n14, n21, n22, n23, n24, n31, n32, n33, n34, n41, n42, n43, n44) {
         const te = this.elements;
         te[0] = n11;
@@ -573,30 +597,6 @@ class Matrix4 {
         array[offset + 14] = te[14];
         array[offset + 15] = te[15];
         return array;
-    }
-    constructor(n11, n12, n13, n14, n21, n22, n23, n24, n31, n32, n33, n34, n41, n42, n43, n44){
-        Matrix4.prototype.isMatrix4 = true;
-        this.elements = [
-            1,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            0,
-            1
-        ];
-        if (n11 !== undefined) {
-            this.set(n11, n12, n13, n14, n21, n22, n23, n24, n31, n32, n33, n34, n41, n42, n43, n44);
-        }
     }
 }
 const _v1 = /*@__PURE__*/ new Vector3();

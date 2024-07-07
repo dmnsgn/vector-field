@@ -10,16 +10,6 @@ import '../utils.js';
 import '../math/ColorManagement.js';
 
 class VideoTexture extends Texture {
-    clone() {
-        return new this.constructor(this.image).copy(this);
-    }
-    update() {
-        const video = this.image;
-        const hasVideoFrameCallback = 'requestVideoFrameCallback' in video;
-        if (hasVideoFrameCallback === false && video.readyState >= video.HAVE_CURRENT_DATA) {
-            this.needsUpdate = true;
-        }
-    }
     constructor(video, mapping, wrapS, wrapT, magFilter, minFilter, format, type, anisotropy){
         super(video, mapping, wrapS, wrapT, magFilter, minFilter, format, type, anisotropy);
         this.isVideoTexture = true;
@@ -33,6 +23,16 @@ class VideoTexture extends Texture {
         }
         if ('requestVideoFrameCallback' in video) {
             video.requestVideoFrameCallback(updateVideo);
+        }
+    }
+    clone() {
+        return new this.constructor(this.image).copy(this);
+    }
+    update() {
+        const video = this.image;
+        const hasVideoFrameCallback = 'requestVideoFrameCallback' in video;
+        if (hasVideoFrameCallback === false && video.readyState >= video.HAVE_CURRENT_DATA) {
+            this.needsUpdate = true;
         }
     }
 }

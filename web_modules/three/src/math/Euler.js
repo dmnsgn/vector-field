@@ -7,6 +7,13 @@ import './Vector3.js';
 const _matrix = /*@__PURE__*/ new Matrix4();
 const _quaternion = /*@__PURE__*/ new Quaternion();
 class Euler {
+    constructor(x = 0, y = 0, z = 0, order = Euler.DEFAULT_ORDER){
+        this.isEuler = true;
+        this._x = x;
+        this._y = y;
+        this._z = z;
+        this._order = order;
+    }
     get x() {
         return this._x;
     }
@@ -174,13 +181,6 @@ class Euler {
         yield this._y;
         yield this._z;
         yield this._order;
-    }
-    constructor(x = 0, y = 0, z = 0, order = Euler.DEFAULT_ORDER){
-        this.isEuler = true;
-        this._x = x;
-        this._y = y;
-        this._z = z;
-        this._order = order;
     }
 }
 Euler.DEFAULT_ORDER = 'XYZ';

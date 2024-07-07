@@ -26,6 +26,14 @@ const _ray = /*@__PURE__*/ new Ray();
 const _sphere = /*@__PURE__*/ new Sphere();
 const _position = /*@__PURE__*/ new Vector3();
 class Points extends Object3D {
+    constructor(geometry = new BufferGeometry(), material = new PointsMaterial()){
+        super();
+        this.isPoints = true;
+        this.type = 'Points';
+        this.geometry = geometry;
+        this.material = material;
+        this.updateMorphTargets();
+    }
     copy(source, recursive) {
         super.copy(source, recursive);
         this.material = Array.isArray(source.material) ? source.material.slice() : source.material;
@@ -84,14 +92,6 @@ class Points extends Object3D {
                 }
             }
         }
-    }
-    constructor(geometry = new BufferGeometry(), material = new PointsMaterial()){
-        super();
-        this.isPoints = true;
-        this.type = 'Points';
-        this.geometry = geometry;
-        this.material = material;
-        this.updateMorphTargets();
     }
 }
 function testPoint(point, index, localThresholdSq, matrixWorld, raycaster, intersects, object) {

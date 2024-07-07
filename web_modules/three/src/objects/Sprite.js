@@ -17,8 +17,8 @@ import '../math/Matrix3.js';
 import '../math/Box3.js';
 import '../core/BufferAttribute.js';
 import '../extras/DataUtils.js';
-import '../math/Sphere.js';
 import '../utils.js';
+import '../math/Sphere.js';
 import '../materials/Material.js';
 import '../math/Color.js';
 import '../math/ColorManagement.js';
@@ -37,6 +37,50 @@ const _uvA = /*@__PURE__*/ new Vector2();
 const _uvB = /*@__PURE__*/ new Vector2();
 const _uvC = /*@__PURE__*/ new Vector2();
 class Sprite extends Object3D {
+    constructor(material = new SpriteMaterial()){
+        super();
+        this.isSprite = true;
+        this.type = 'Sprite';
+        if (_geometry === undefined) {
+            _geometry = new BufferGeometry();
+            const float32Array = new Float32Array([
+                -0.5,
+                -0.5,
+                0,
+                0,
+                0,
+                0.5,
+                -0.5,
+                0,
+                1,
+                0,
+                0.5,
+                0.5,
+                0,
+                1,
+                1,
+                -0.5,
+                0.5,
+                0,
+                0,
+                1
+            ]);
+            const interleavedBuffer = new InterleavedBuffer(float32Array, 5);
+            _geometry.setIndex([
+                0,
+                1,
+                2,
+                0,
+                2,
+                3
+            ]);
+            _geometry.setAttribute('position', new InterleavedBufferAttribute(interleavedBuffer, 3, 0, false));
+            _geometry.setAttribute('uv', new InterleavedBufferAttribute(interleavedBuffer, 2, 3, false));
+        }
+        this.geometry = _geometry;
+        this.material = material;
+        this.center = new Vector2(0.5, 0.5);
+    }
     raycast(raycaster, intersects) {
         if (raycaster.camera === null) {
             console.error('THREE.Sprite: "Raycaster.camera" needs to be set in order to raycast against sprites.');
@@ -87,50 +131,6 @@ class Sprite extends Object3D {
         if (source.center !== undefined) this.center.copy(source.center);
         this.material = source.material;
         return this;
-    }
-    constructor(material = new SpriteMaterial()){
-        super();
-        this.isSprite = true;
-        this.type = 'Sprite';
-        if (_geometry === undefined) {
-            _geometry = new BufferGeometry();
-            const float32Array = new Float32Array([
-                -0.5,
-                -0.5,
-                0,
-                0,
-                0,
-                0.5,
-                -0.5,
-                0,
-                1,
-                0,
-                0.5,
-                0.5,
-                0,
-                1,
-                1,
-                -0.5,
-                0.5,
-                0,
-                0,
-                1
-            ]);
-            const interleavedBuffer = new InterleavedBuffer(float32Array, 5);
-            _geometry.setIndex([
-                0,
-                1,
-                2,
-                0,
-                2,
-                3
-            ]);
-            _geometry.setAttribute('position', new InterleavedBufferAttribute(interleavedBuffer, 3, 0, false));
-            _geometry.setAttribute('uv', new InterleavedBufferAttribute(interleavedBuffer, 2, 3, false));
-        }
-        this.geometry = _geometry;
-        this.material = material;
-        this.center = new Vector2(0.5, 0.5);
     }
 }
 function transformVertex(vertexPosition, mvPosition, center, scale, sin, cos) {

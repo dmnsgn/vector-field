@@ -22,6 +22,14 @@ import './tracks/VectorKeyframeTrack.js';
 
 const _controlInterpolantsResultBuffer = new Float32Array(1);
 class AnimationMixer extends EventDispatcher {
+    constructor(root){
+        super();
+        this._root = root;
+        this._initMemoryManager();
+        this._accuIndex = 0;
+        this.time = 0;
+        this.timeScale = 1.0;
+    }
     _bindAction(action, prototypeAction) {
         const root = action._localRoot || this._root, tracks = action._clip.tracks, nTracks = tracks.length, bindings = action._propertyBindings, interpolants = action._interpolants, rootUuid = root.uuid, bindingsByRoot = this._bindingsByRootAndName;
         let bindingsByName = bindingsByRoot[rootUuid];
@@ -391,14 +399,6 @@ class AnimationMixer extends EventDispatcher {
             this._deactivateAction(action);
             this._removeInactiveAction(action);
         }
-    }
-    constructor(root){
-        super();
-        this._root = root;
-        this._initMemoryManager();
-        this._accuIndex = 0;
-        this.time = 0;
-        this.timeScale = 1.0;
     }
 }
 

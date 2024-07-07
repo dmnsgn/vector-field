@@ -10,6 +10,15 @@ import '../core/Layers.js';
 import '../math/Matrix3.js';
 
 class Camera extends Object3D {
+    constructor(){
+        super();
+        this.isCamera = true;
+        this.type = 'Camera';
+        this.matrixWorldInverse = new Matrix4();
+        this.projectionMatrix = new Matrix4();
+        this.projectionMatrixInverse = new Matrix4();
+        this.coordinateSystem = WebGLCoordinateSystem;
+    }
     copy(source, recursive) {
         super.copy(source, recursive);
         this.matrixWorldInverse.copy(source.matrixWorldInverse);
@@ -31,15 +40,6 @@ class Camera extends Object3D {
     }
     clone() {
         return new this.constructor().copy(this);
-    }
-    constructor(){
-        super();
-        this.isCamera = true;
-        this.type = 'Camera';
-        this.matrixWorldInverse = new Matrix4();
-        this.projectionMatrix = new Matrix4();
-        this.projectionMatrixInverse = new Matrix4();
-        this.coordinateSystem = WebGLCoordinateSystem;
     }
 }
 

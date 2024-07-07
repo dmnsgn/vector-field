@@ -25,7 +25,83 @@ const _addedEvent = {
 const _removedEvent = {
     type: 'removed'
 };
+const _childaddedEvent = {
+    type: 'childadded',
+    child: null
+};
+const _childremovedEvent = {
+    type: 'childremoved',
+    child: null
+};
 class Object3D extends EventDispatcher {
+    constructor(){
+        super();
+        this.isObject3D = true;
+        Object.defineProperty(this, 'id', {
+            value: _object3DId++
+        });
+        this.uuid = generateUUID();
+        this.name = '';
+        this.type = 'Object3D';
+        this.parent = null;
+        this.children = [];
+        this.up = Object3D.DEFAULT_UP.clone();
+        const position = new Vector3();
+        const rotation = new Euler();
+        const quaternion = new Quaternion();
+        const scale = new Vector3(1, 1, 1);
+        function onRotationChange() {
+            quaternion.setFromEuler(rotation, false);
+        }
+        function onQuaternionChange() {
+            rotation.setFromQuaternion(quaternion, undefined, false);
+        }
+        rotation._onChange(onRotationChange);
+        quaternion._onChange(onQuaternionChange);
+        Object.defineProperties(this, {
+            position: {
+                configurable: true,
+                enumerable: true,
+                value: position
+            },
+            rotation: {
+                configurable: true,
+                enumerable: true,
+                value: rotation
+            },
+            quaternion: {
+                configurable: true,
+                enumerable: true,
+                value: quaternion
+            },
+            scale: {
+                configurable: true,
+                enumerable: true,
+                value: scale
+            },
+            modelViewMatrix: {
+                value: new Matrix4()
+            },
+            normalMatrix: {
+                value: new Matrix3()
+            }
+        });
+        this.matrix = new Matrix4();
+        this.matrixWorld = new Matrix4();
+        this.matrixAutoUpdate = Object3D.DEFAULT_MATRIX_AUTO_UPDATE;
+        this.matrixWorldAutoUpdate = Object3D.DEFAULT_MATRIX_WORLD_AUTO_UPDATE; // checked by the renderer
+        this.matrixWorldNeedsUpdate = false;
+        this.layers = new Layers();
+        this.visible = true;
+        this.castShadow = false;
+        this.receiveShadow = false;
+        this.frustumCulled = true;
+        this.renderOrder = 0;
+        this.animations = [];
+        this.userData = {};
+    }
+    onBeforeShadow() {}
+    onAfterShadow() {}
     onBeforeRender() {}
     onAfterRender() {}
     applyMatrix4(matrix) {
@@ -134,12 +210,13 @@ class Object3D extends EventDispatcher {
             return this;
         }
         if (object && object.isObject3D) {
-            if (object.parent !== null) {
-                object.parent.remove(object);
-            }
+            object.removeFromParent();
             object.parent = this;
             this.children.push(object);
             object.dispatchEvent(_addedEvent);
+            _childaddedEvent.child = object;
+            this.dispatchEvent(_childaddedEvent);
+            _childaddedEvent.child = null;
         } else {
             console.error('THREE.Object3D.add: object not an instance of THREE.Object3D.', object);
         }
@@ -157,6 +234,9 @@ class Object3D extends EventDispatcher {
             object.parent = null;
             this.children.splice(index, 1);
             object.dispatchEvent(_removedEvent);
+            _childremovedEvent.child = object;
+            this.dispatchEvent(_childremovedEvent);
+            _childremovedEvent.child = null;
         }
         return this;
     }
@@ -180,8 +260,14 @@ class Object3D extends EventDispatcher {
             _m1.multiply(object.parent.matrixWorld);
         }
         object.applyMatrix4(_m1);
-        this.add(object);
+        object.removeFromParent();
+        object.parent = this;
+        this.children.push(object);
         object.updateWorldMatrix(false, true);
+        object.dispatchEvent(_addedEvent);
+        _childaddedEvent.child = object;
+        this.dispatchEvent(_childaddedEvent);
+        _childaddedEvent.child = null;
         return this;
     }
     getObjectById(id) {
@@ -201,14 +287,12 @@ class Object3D extends EventDispatcher {
         }
         return undefined;
     }
-    getObjectsByProperty(name, value) {
-        let result = [];
+    getObjectsByProperty(name, value, result) {
+        if (result === void 0) result = [];
         if (this[name] === value) result.push(this);
-        for(let i = 0, l = this.children.length; i < l; i++){
-            const childResult = this.children[i].getObjectsByProperty(name, value);
-            if (childResult.length > 0) {
-                result = result.concat(childResult);
-            }
+        const children = this.children;
+        for(let i = 0, l = children.length; i < l; i++){
+            children[i].getObjectsByProperty(name, value, result);
         }
         return result;
     }
@@ -261,42 +345,42 @@ class Object3D extends EventDispatcher {
     updateMatrixWorld(force) {
         if (this.matrixAutoUpdate) this.updateMatrix();
         if (this.matrixWorldNeedsUpdate || force) {
+            if (this.matrixWorldAutoUpdate === true) {
+                if (this.parent === null) {
+                    this.matrixWorld.copy(this.matrix);
+                } else {
+                    this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix);
+                }
+            }
+            this.matrixWorldNeedsUpdate = false;
+            force = true;
+        }
+        // make sure descendants are updated if required
+        const children = this.children;
+        for(let i = 0, l = children.length; i < l; i++){
+            const child = children[i];
+            child.updateMatrixWorld(force);
+        }
+    }
+    updateWorldMatrix(updateParents, updateChildren) {
+        const parent = this.parent;
+        if (updateParents === true && parent !== null) {
+            parent.updateWorldMatrix(true, false);
+        }
+        if (this.matrixAutoUpdate) this.updateMatrix();
+        if (this.matrixWorldAutoUpdate === true) {
             if (this.parent === null) {
                 this.matrixWorld.copy(this.matrix);
             } else {
                 this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix);
             }
-            this.matrixWorldNeedsUpdate = false;
-            force = true;
         }
-        // update children
-        const children = this.children;
-        for(let i = 0, l = children.length; i < l; i++){
-            const child = children[i];
-            if (child.matrixWorldAutoUpdate === true || force === true) {
-                child.updateMatrixWorld(force);
-            }
-        }
-    }
-    updateWorldMatrix(updateParents, updateChildren) {
-        const parent = this.parent;
-        if (updateParents === true && parent !== null && parent.matrixWorldAutoUpdate === true) {
-            parent.updateWorldMatrix(true, false);
-        }
-        if (this.matrixAutoUpdate) this.updateMatrix();
-        if (this.parent === null) {
-            this.matrixWorld.copy(this.matrix);
-        } else {
-            this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix);
-        }
-        // update children
+        // make sure descendants are updated
         if (updateChildren === true) {
             const children = this.children;
             for(let i = 0, l = children.length; i < l; i++){
                 const child = children[i];
-                if (child.matrixWorldAutoUpdate === true) {
-                    child.updateWorldMatrix(false, true);
-                }
+                child.updateWorldMatrix(false, true);
             }
         }
     }
@@ -346,6 +430,42 @@ class Object3D extends EventDispatcher {
             object.count = this.count;
             object.instanceMatrix = this.instanceMatrix.toJSON();
             if (this.instanceColor !== null) object.instanceColor = this.instanceColor.toJSON();
+        }
+        if (this.isBatchedMesh) {
+            object.type = 'BatchedMesh';
+            object.perObjectFrustumCulled = this.perObjectFrustumCulled;
+            object.sortObjects = this.sortObjects;
+            object.drawRanges = this._drawRanges;
+            object.reservedRanges = this._reservedRanges;
+            object.visibility = this._visibility;
+            object.active = this._active;
+            object.bounds = this._bounds.map((bound)=>({
+                    boxInitialized: bound.boxInitialized,
+                    boxMin: bound.box.min.toArray(),
+                    boxMax: bound.box.max.toArray(),
+                    sphereInitialized: bound.sphereInitialized,
+                    sphereRadius: bound.sphere.radius,
+                    sphereCenter: bound.sphere.center.toArray()
+                }));
+            object.maxInstanceCount = this._maxInstanceCount;
+            object.maxVertexCount = this._maxVertexCount;
+            object.maxIndexCount = this._maxIndexCount;
+            object.geometryInitialized = this._geometryInitialized;
+            object.geometryCount = this._geometryCount;
+            object.matricesTexture = this._matricesTexture.toJSON(meta);
+            if (this._colorsTexture !== null) object.colorsTexture = this._colorsTexture.toJSON(meta);
+            if (this.boundingSphere !== null) {
+                object.boundingSphere = {
+                    center: object.boundingSphere.center.toArray(),
+                    radius: object.boundingSphere.radius
+                };
+            }
+            if (this.boundingBox !== null) {
+                object.boundingBox = {
+                    min: object.boundingBox.min.toArray(),
+                    max: object.boundingBox.max.toArray()
+                };
+            }
         }
         //
         function serialize(library, element) {
@@ -461,8 +581,8 @@ class Object3D extends EventDispatcher {
         this.matrix.copy(source.matrix);
         this.matrixWorld.copy(source.matrixWorld);
         this.matrixAutoUpdate = source.matrixAutoUpdate;
-        this.matrixWorldNeedsUpdate = source.matrixWorldNeedsUpdate;
         this.matrixWorldAutoUpdate = source.matrixWorldAutoUpdate;
+        this.matrixWorldNeedsUpdate = source.matrixWorldNeedsUpdate;
         this.layers.mask = source.layers.mask;
         this.visible = source.visible;
         this.castShadow = source.castShadow;
@@ -478,72 +598,6 @@ class Object3D extends EventDispatcher {
             }
         }
         return this;
-    }
-    constructor(){
-        super();
-        this.isObject3D = true;
-        Object.defineProperty(this, 'id', {
-            value: _object3DId++
-        });
-        this.uuid = generateUUID();
-        this.name = '';
-        this.type = 'Object3D';
-        this.parent = null;
-        this.children = [];
-        this.up = Object3D.DEFAULT_UP.clone();
-        const position = new Vector3();
-        const rotation = new Euler();
-        const quaternion = new Quaternion();
-        const scale = new Vector3(1, 1, 1);
-        function onRotationChange() {
-            quaternion.setFromEuler(rotation, false);
-        }
-        function onQuaternionChange() {
-            rotation.setFromQuaternion(quaternion, undefined, false);
-        }
-        rotation._onChange(onRotationChange);
-        quaternion._onChange(onQuaternionChange);
-        Object.defineProperties(this, {
-            position: {
-                configurable: true,
-                enumerable: true,
-                value: position
-            },
-            rotation: {
-                configurable: true,
-                enumerable: true,
-                value: rotation
-            },
-            quaternion: {
-                configurable: true,
-                enumerable: true,
-                value: quaternion
-            },
-            scale: {
-                configurable: true,
-                enumerable: true,
-                value: scale
-            },
-            modelViewMatrix: {
-                value: new Matrix4()
-            },
-            normalMatrix: {
-                value: new Matrix3()
-            }
-        });
-        this.matrix = new Matrix4();
-        this.matrixWorld = new Matrix4();
-        this.matrixAutoUpdate = Object3D.DEFAULT_MATRIX_AUTO_UPDATE;
-        this.matrixWorldNeedsUpdate = false;
-        this.matrixWorldAutoUpdate = Object3D.DEFAULT_MATRIX_WORLD_AUTO_UPDATE; // checked by the renderer
-        this.layers = new Layers();
-        this.visible = true;
-        this.castShadow = false;
-        this.receiveShadow = false;
-        this.frustumCulled = true;
-        this.renderOrder = 0;
-        this.animations = [];
-        this.userData = {};
     }
 }
 Object3D.DEFAULT_UP = /*@__PURE__*/ new Vector3(0, 1, 0);

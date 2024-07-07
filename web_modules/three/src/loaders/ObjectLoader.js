@@ -4,6 +4,7 @@ import { Color } from '../math/Color.js';
 import { Object3D } from '../core/Object3D.js';
 import { Group } from '../objects/Group.js';
 import { InstancedMesh } from '../objects/InstancedMesh.js';
+import { BatchedMesh } from '../objects/BatchedMesh.js';
 import { Sprite } from '../objects/Sprite.js';
 import { Points } from '../objects/Points.js';
 import { Line } from '../objects/Line.js';
@@ -61,6 +62,8 @@ import { TorusKnotGeometry } from '../geometries/TorusKnotGeometry.js';
 import { TubeGeometry } from '../geometries/TubeGeometry.js';
 import { WireframeGeometry } from '../geometries/WireframeGeometry.js';
 import { getTypedArray } from '../utils.js';
+import { Box3 } from '../math/Box3.js';
+import { Sphere } from '../math/Sphere.js';
 import '../core/BufferAttribute.js';
 import '../math/Vector3.js';
 import '../math/MathUtils.js';
@@ -73,24 +76,24 @@ import '../math/Matrix4.js';
 import '../core/EventDispatcher.js';
 import '../math/Euler.js';
 import '../core/Layers.js';
-import '../math/Box3.js';
-import '../math/Sphere.js';
 import '../math/Ray.js';
 import '../math/Triangle.js';
 import '../materials/MeshBasicMaterial.js';
 import '../materials/Material.js';
 import '../core/BufferGeometry.js';
+import '../extras/ImageUtils.js';
+import '../math/Frustum.js';
+import '../math/Plane.js';
 import '../core/InterleavedBuffer.js';
 import '../core/InterleavedBufferAttribute.js';
 import '../materials/SpriteMaterial.js';
 import '../materials/PointsMaterial.js';
 import '../materials/LineBasicMaterial.js';
 import '../math/Vector4.js';
-import '../extras/ImageUtils.js';
 import '../extras/core/Path.js';
 import '../extras/core/CurvePath.js';
 import '../extras/core/Curve.js';
-import '../../../_chunks/Curves-1010459e.js';
+import '../../../_chunks/Curves-cjyKFada.js';
 import '../extras/curves/ArcCurve.js';
 import '../extras/curves/EllipseCurve.js';
 import '../extras/curves/CatmullRomCurve3.js';
@@ -105,12 +108,10 @@ import '../extras/curves/SplineCurve.js';
 import '../lights/Light.js';
 import '../lights/SpotLightShadow.js';
 import '../lights/LightShadow.js';
-import '../math/Frustum.js';
-import '../math/Plane.js';
+import '../cameras/Camera.js';
 import '../lights/PointLightShadow.js';
 import '../lights/DirectionalLightShadow.js';
 import '../math/SphericalHarmonics3.js';
-import '../cameras/Camera.js';
 import './Cache.js';
 import '../animation/AnimationUtils.js';
 import '../animation/KeyframeTrack.js';
@@ -171,6 +172,9 @@ var Geometries = /*#__PURE__*/Object.freeze({
 });
 
 class ObjectLoader extends Loader {
+    constructor(manager){
+        super(manager);
+    }
     load(url, onLoad, onProgress, onError) {
         const scope = this;
         const path = this.path === '' ? LoaderUtils.extractUrlBase(url) : this.path;
@@ -225,6 +229,7 @@ class ObjectLoader extends Loader {
         const object = this.parseObject(json.object, geometries, materials, textures, animations);
         const skeletons = this.parseSkeletons(json.skeletons, object);
         this.bindSkeletons(object, skeletons);
+        this.bindLightTargets(object);
         //
         if (onLoad !== undefined) {
             let hasImages = false;
@@ -248,6 +253,7 @@ class ObjectLoader extends Loader {
         const object = this.parseObject(json.object, geometries, materials, textures, animations);
         const skeletons = this.parseSkeletons(json.skeletons, object);
         this.bindSkeletons(object, skeletons);
+        this.bindLightTargets(object);
         return object;
     }
     parseShapes(json) {
@@ -491,7 +497,6 @@ class ObjectLoader extends Loader {
                 if (data.internalFormat !== undefined) texture.internalFormat = data.internalFormat;
                 if (data.type !== undefined) texture.type = data.type;
                 if (data.colorSpace !== undefined) texture.colorSpace = data.colorSpace;
-                if (data.encoding !== undefined) texture.encoding = data.encoding; // @deprecated, r152
                 if (data.minFilter !== undefined) texture.minFilter = parseConstant(data.minFilter, TEXTURE_FILTER);
                 if (data.magFilter !== undefined) texture.magFilter = parseConstant(data.magFilter, TEXTURE_FILTER);
                 if (data.anisotropy !== undefined) texture.anisotropy = data.anisotropy;
@@ -564,6 +569,9 @@ class ObjectLoader extends Loader {
                 }
                 if (data.backgroundBlurriness !== undefined) object.backgroundBlurriness = data.backgroundBlurriness;
                 if (data.backgroundIntensity !== undefined) object.backgroundIntensity = data.backgroundIntensity;
+                if (data.backgroundRotation !== undefined) object.backgroundRotation.fromArray(data.backgroundRotation);
+                if (data.environmentIntensity !== undefined) object.environmentIntensity = data.environmentIntensity;
+                if (data.environmentRotation !== undefined) object.environmentRotation.fromArray(data.environmentRotation);
                 break;
             case 'PerspectiveCamera':
                 object = new PerspectiveCamera(data.fov, data.aspect, data.near, data.far);
@@ -583,6 +591,7 @@ class ObjectLoader extends Loader {
                 break;
             case 'DirectionalLight':
                 object = new DirectionalLight(data.color, data.intensity);
+                object.target = data.target || '';
                 break;
             case 'PointLight':
                 object = new PointLight(data.color, data.intensity, data.distance, data.decay);
@@ -592,6 +601,7 @@ class ObjectLoader extends Loader {
                 break;
             case 'SpotLight':
                 object = new SpotLight(data.color, data.intensity, data.distance, data.angle, data.penumbra, data.decay);
+                object.target = data.target || '';
                 break;
             case 'HemisphereLight':
                 object = new HemisphereLight(data.color, data.groundColor, data.intensity);
@@ -621,6 +631,39 @@ class ObjectLoader extends Loader {
                 object = new InstancedMesh(geometry, material, count);
                 object.instanceMatrix = new InstancedBufferAttribute(new Float32Array(instanceMatrix.array), 16);
                 if (instanceColor !== undefined) object.instanceColor = new InstancedBufferAttribute(new Float32Array(instanceColor.array), instanceColor.itemSize);
+                break;
+            case 'BatchedMesh':
+                geometry = getGeometry(data.geometry);
+                material = getMaterial(data.material);
+                object = new BatchedMesh(data.maxInstanceCount, data.maxVertexCount, data.maxIndexCount, material);
+                object.geometry = geometry;
+                object.perObjectFrustumCulled = data.perObjectFrustumCulled;
+                object.sortObjects = data.sortObjects;
+                object._drawRanges = data.drawRanges;
+                object._reservedRanges = data.reservedRanges;
+                object._visibility = data.visibility;
+                object._active = data.active;
+                object._bounds = data.bounds.map((bound)=>{
+                    const box = new Box3();
+                    box.min.fromArray(bound.boxMin);
+                    box.max.fromArray(bound.boxMax);
+                    const sphere = new Sphere();
+                    sphere.radius = bound.sphereRadius;
+                    sphere.center.fromArray(bound.sphereCenter);
+                    return {
+                        boxInitialized: bound.boxInitialized,
+                        box: box,
+                        sphereInitialized: bound.sphereInitialized,
+                        sphere: sphere
+                    };
+                });
+                object._maxInstanceCount = data.maxInstanceCount;
+                object._maxVertexCount = data.maxVertexCount;
+                object._maxIndexCount = data.maxIndexCount;
+                object._geometryInitialized = data.geometryInitialized;
+                object._geometryCount = data.geometryCount;
+                object._matricesTexture = getTexture(data.matricesTexture.uuid);
+                if (data.colorsTexture !== undefined) object._colorsTexture = getTexture(data.colorsTexture.uuid);
                 break;
             case 'LOD':
                 object = new LOD();
@@ -666,6 +709,7 @@ class ObjectLoader extends Loader {
         if (data.castShadow !== undefined) object.castShadow = data.castShadow;
         if (data.receiveShadow !== undefined) object.receiveShadow = data.receiveShadow;
         if (data.shadow) {
+            if (data.shadow.intensity !== undefined) object.shadow.intensity = data.shadow.intensity;
             if (data.shadow.bias !== undefined) object.shadow.bias = data.shadow.bias;
             if (data.shadow.normalBias !== undefined) object.shadow.normalBias = data.shadow.normalBias;
             if (data.shadow.radius !== undefined) object.shadow.radius = data.shadow.radius;
@@ -716,8 +760,18 @@ class ObjectLoader extends Loader {
             }
         });
     }
-    constructor(manager){
-        super(manager);
+    bindLightTargets(object) {
+        object.traverse(function(child) {
+            if (child.isDirectionalLight || child.isSpotLight) {
+                const uuid = child.target;
+                const target = object.getObjectByProperty('uuid', uuid);
+                if (target !== undefined) {
+                    child.target = target;
+                } else {
+                    child.target = new Object3D();
+                }
+            }
+        });
     }
 }
 const TEXTURE_MAPPING = {

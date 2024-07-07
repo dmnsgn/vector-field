@@ -1,6 +1,6 @@
 import { BufferGeometry } from '../core/BufferGeometry.js';
 import { Float32BufferAttribute } from '../core/BufferAttribute.js';
-import { C as Curves } from '../../../_chunks/Curves-1010459e.js';
+import { C as Curves } from '../../../_chunks/Curves-cjyKFada.js';
 import { Vector2 } from '../math/Vector2.js';
 import { Vector3 } from '../math/Vector3.js';
 import { Shape } from '../extras/core/Shape.js';
@@ -35,29 +35,6 @@ import '../extras/core/CurvePath.js';
 import '../extras/Earcut.js';
 
 class ExtrudeGeometry extends BufferGeometry {
-    copy(source) {
-        super.copy(source);
-        this.parameters = Object.assign({}, source.parameters);
-        return this;
-    }
-    toJSON() {
-        const data = super.toJSON();
-        const shapes = this.parameters.shapes;
-        const options = this.parameters.options;
-        return toJSON(shapes, options, data);
-    }
-    static fromJSON(data, shapes) {
-        const geometryShapes = [];
-        for(let j = 0, jl = data.shapes.length; j < jl; j++){
-            const shape = shapes[data.shapes[j]];
-            geometryShapes.push(shape);
-        }
-        const extrudePath = data.options.extrudePath;
-        if (extrudePath !== undefined) {
-            data.options.extrudePath = new Curves[extrudePath.type]().fromJSON(extrudePath);
-        }
-        return new ExtrudeGeometry(geometryShapes, data.options);
-    }
     constructor(shapes = new Shape([
         new Vector2(0.5, 0.5),
         new Vector2(-0.5, 0.5),
@@ -421,6 +398,29 @@ class ExtrudeGeometry extends BufferGeometry {
                 uvArray.push(vector2.y);
             }
         }
+    }
+    copy(source) {
+        super.copy(source);
+        this.parameters = Object.assign({}, source.parameters);
+        return this;
+    }
+    toJSON() {
+        const data = super.toJSON();
+        const shapes = this.parameters.shapes;
+        const options = this.parameters.options;
+        return toJSON(shapes, options, data);
+    }
+    static fromJSON(data, shapes) {
+        const geometryShapes = [];
+        for(let j = 0, jl = data.shapes.length; j < jl; j++){
+            const shape = shapes[data.shapes[j]];
+            geometryShapes.push(shape);
+        }
+        const extrudePath = data.options.extrudePath;
+        if (extrudePath !== undefined) {
+            data.options.extrudePath = new Curves[extrudePath.type]().fromJSON(extrudePath);
+        }
+        return new ExtrudeGeometry(geometryShapes, data.options);
     }
 }
 const WorldUVGenerator = {

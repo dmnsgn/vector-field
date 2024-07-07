@@ -8,7 +8,7 @@ import '../math/Vector3.js';
 import '../math/Quaternion.js';
 import '../math/Matrix4.js';
 import '../constants.js';
-import '../../../_chunks/Curves-1010459e.js';
+import '../../../_chunks/Curves-cjyKFada.js';
 import '../extras/curves/ArcCurve.js';
 import '../extras/curves/EllipseCurve.js';
 import '../extras/curves/CatmullRomCurve3.js';
@@ -22,6 +22,7 @@ import '../extras/curves/QuadraticBezierCurve3.js';
 import '../extras/curves/SplineCurve.js';
 import '../core/BufferAttribute.js';
 import '../extras/DataUtils.js';
+import '../utils.js';
 import '../core/BufferGeometry.js';
 import '../math/Box3.js';
 import '../core/EventDispatcher.js';
@@ -30,12 +31,8 @@ import '../core/Object3D.js';
 import '../math/Euler.js';
 import '../core/Layers.js';
 import '../math/Matrix3.js';
-import '../utils.js';
 
 class CapsuleGeometry extends LatheGeometry {
-    static fromJSON(data) {
-        return new CapsuleGeometry(data.radius, data.length, data.capSegments, data.radialSegments);
-    }
     constructor(radius = 1, length = 1, capSegments = 4, radialSegments = 8){
         const path = new Path();
         path.absarc(0, -length / 2, radius, Math.PI * 1.5, 0);
@@ -48,6 +45,9 @@ class CapsuleGeometry extends LatheGeometry {
             capSegments: capSegments,
             radialSegments: radialSegments
         };
+    }
+    static fromJSON(data) {
+        return new CapsuleGeometry(data.radius, data.length, data.capSegments, data.radialSegments);
     }
 }
 

@@ -1,6 +1,6 @@
-import { InterpolateLinear } from '../../constants.js';
 import { KeyframeTrack } from '../KeyframeTrack.js';
 import { QuaternionLinearInterpolant } from '../../math/interpolants/QuaternionLinearInterpolant.js';
+import '../../constants.js';
 import '../../math/interpolants/CubicInterpolant.js';
 import '../../math/Interpolant.js';
 import '../../math/interpolants/LinearInterpolant.js';
@@ -18,7 +18,7 @@ import '../../math/MathUtils.js';
 }
 QuaternionKeyframeTrack.prototype.ValueTypeName = 'quaternion';
 // ValueBufferType is inherited
-QuaternionKeyframeTrack.prototype.DefaultInterpolation = InterpolateLinear;
+// DefaultInterpolation is inherited;
 QuaternionKeyframeTrack.prototype.InterpolantFactoryMethodSmooth = undefined;
 
 export { QuaternionKeyframeTrack };

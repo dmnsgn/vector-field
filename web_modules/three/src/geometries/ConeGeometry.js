@@ -9,18 +9,15 @@ import '../core/EventDispatcher.js';
 import '../core/BufferAttribute.js';
 import '../constants.js';
 import '../extras/DataUtils.js';
+import '../utils.js';
 import '../math/Sphere.js';
 import '../core/Object3D.js';
 import '../math/Matrix4.js';
 import '../math/Euler.js';
 import '../core/Layers.js';
 import '../math/Matrix3.js';
-import '../utils.js';
 
 class ConeGeometry extends CylinderGeometry {
-    static fromJSON(data) {
-        return new ConeGeometry(data.radius, data.height, data.radialSegments, data.heightSegments, data.openEnded, data.thetaStart, data.thetaLength);
-    }
     constructor(radius = 1, height = 1, radialSegments = 32, heightSegments = 1, openEnded = false, thetaStart = 0, thetaLength = Math.PI * 2){
         super(0, radius, height, radialSegments, heightSegments, openEnded, thetaStart, thetaLength);
         this.type = 'ConeGeometry';
@@ -33,6 +30,9 @@ class ConeGeometry extends CylinderGeometry {
             thetaStart: thetaStart,
             thetaLength: thetaLength
         };
+    }
+    static fromJSON(data) {
+        return new ConeGeometry(data.radius, data.height, data.radialSegments, data.heightSegments, data.openEnded, data.thetaStart, data.thetaLength);
     }
 }
 

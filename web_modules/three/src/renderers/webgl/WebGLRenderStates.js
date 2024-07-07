@@ -10,11 +10,12 @@ import '../../math/Quaternion.js';
 import '../../math/Vector2.js';
 import '../shaders/UniformsLib.js';
 
-function WebGLRenderState(extensions, capabilities) {
-    const lights = new WebGLLights(extensions, capabilities);
+function WebGLRenderState(extensions) {
+    const lights = new WebGLLights(extensions);
     const lightsArray = [];
     const shadowsArray = [];
-    function init() {
+    function init(camera) {
+        state.camera = camera;
         lightsArray.length = 0;
         shadowsArray.length = 0;
     }
@@ -24,8 +25,8 @@ function WebGLRenderState(extensions, capabilities) {
     function pushShadow(shadowLight) {
         shadowsArray.push(shadowLight);
     }
-    function setupLights(useLegacyLights) {
-        lights.setup(lightsArray, useLegacyLights);
+    function setupLights() {
+        lights.setup(lightsArray);
     }
     function setupLightsView(camera) {
         lights.setupView(lightsArray, camera);
@@ -33,7 +34,9 @@ function WebGLRenderState(extensions, capabilities) {
     const state = {
         lightsArray: lightsArray,
         shadowsArray: shadowsArray,
-        lights: lights
+        camera: null,
+        lights: lights,
+        transmissionRenderTarget: {}
     };
     return {
         init: init,
@@ -44,20 +47,20 @@ function WebGLRenderState(extensions, capabilities) {
         pushShadow: pushShadow
     };
 }
-function WebGLRenderStates(extensions, capabilities) {
+function WebGLRenderStates(extensions) {
     let renderStates = new WeakMap();
     function get(scene, renderCallDepth) {
         if (renderCallDepth === void 0) renderCallDepth = 0;
         const renderStateArray = renderStates.get(scene);
         let renderState;
         if (renderStateArray === undefined) {
-            renderState = new WebGLRenderState(extensions, capabilities);
+            renderState = new WebGLRenderState(extensions);
             renderStates.set(scene, [
                 renderState
             ]);
         } else {
             if (renderCallDepth >= renderStateArray.length) {
-                renderState = new WebGLRenderState(extensions, capabilities);
+                renderState = new WebGLRenderState(extensions);
                 renderStateArray.push(renderState);
             } else {
                 renderState = renderStateArray[renderCallDepth];

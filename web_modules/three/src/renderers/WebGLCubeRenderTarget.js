@@ -1,4 +1,4 @@
-import { BackSide, NoBlending, LinearMipmapLinearFilter, LinearFilter, sRGBEncoding, SRGBColorSpace, NoColorSpace } from '../constants.js';
+import { LinearFilter, BackSide, NoBlending, LinearMipmapLinearFilter } from '../constants.js';
 import { Mesh } from '../objects/Mesh.js';
 import { BoxGeometry } from '../geometries/BoxGeometry.js';
 import { ShaderMaterial } from '../materials/ShaderMaterial.js';
@@ -6,7 +6,6 @@ import { cloneUniforms } from './shaders/UniformsUtils.js';
 import { WebGLRenderTarget } from './WebGLRenderTarget.js';
 import { CubeCamera } from '../cameras/CubeCamera.js';
 import { CubeTexture } from '../textures/CubeTexture.js';
-import { warnOnce } from '../utils.js';
 import '../math/Vector3.js';
 import '../math/MathUtils.js';
 import '../math/Quaternion.js';
@@ -28,6 +27,7 @@ import '../math/ColorManagement.js';
 import '../core/BufferGeometry.js';
 import '../core/BufferAttribute.js';
 import '../extras/DataUtils.js';
+import '../utils.js';
 import './shaders/ShaderChunk/default_vertex.glsl.js';
 import './shaders/ShaderChunk/default_fragment.glsl.js';
 import '../core/RenderTarget.js';
@@ -39,6 +39,33 @@ import '../cameras/PerspectiveCamera.js';
 import '../cameras/Camera.js';
 
 class WebGLCubeRenderTarget extends WebGLRenderTarget {
+    constructor(size = 1, options = {}){
+        super(size, size, options);
+        this.isWebGLCubeRenderTarget = true;
+        const image = {
+            width: size,
+            height: size,
+            depth: 1
+        };
+        const images = [
+            image,
+            image,
+            image,
+            image,
+            image,
+            image
+        ];
+        this.texture = new CubeTexture(images, options.mapping, options.wrapS, options.wrapT, options.magFilter, options.minFilter, options.format, options.type, options.anisotropy, options.colorSpace);
+        // By convention -- likely based on the RenderMan spec from the 1990's -- cube maps are specified by WebGL (and three.js)
+        // in a coordinate system in which positive-x is to the right when looking up the positive-z axis -- in other words,
+        // in a left-handed coordinate system. By continuing this convention, preexisting cube maps continued to render correctly.
+        // three.js uses a right-handed coordinate system. So environment maps used in three.js appear to have px and nx swapped
+        // and the flag isRenderTargetTexture controls this conversion. The flip is not required when using WebGLCubeRenderTarget.texture
+        // as a cube texture (this is detected when isRenderTargetTexture is set to true for cube textures).
+        this.texture.isRenderTargetTexture = true;
+        this.texture.generateMipmaps = options.generateMipmaps !== undefined ? options.generateMipmaps : false;
+        this.texture.minFilter = options.minFilter !== undefined ? options.minFilter : LinearFilter;
+    }
     fromEquirectangularTexture(renderer, texture) {
         this.texture.type = texture.type;
         this.texture.colorSpace = texture.colorSpace;
@@ -117,38 +144,6 @@ class WebGLCubeRenderTarget extends WebGLRenderTarget {
             renderer.clear(color, depth, stencil);
         }
         renderer.setRenderTarget(currentRenderTarget);
-    }
-    constructor(size = 1, options = {}){
-        super(size, size, options);
-        this.isWebGLCubeRenderTarget = true;
-        const image = {
-            width: size,
-            height: size,
-            depth: 1
-        };
-        const images = [
-            image,
-            image,
-            image,
-            image,
-            image,
-            image
-        ];
-        if (options.encoding !== undefined) {
-            // @deprecated, r152
-            warnOnce('THREE.WebGLCubeRenderTarget: option.encoding has been replaced by option.colorSpace.');
-            options.colorSpace = options.encoding === sRGBEncoding ? SRGBColorSpace : NoColorSpace;
-        }
-        this.texture = new CubeTexture(images, options.mapping, options.wrapS, options.wrapT, options.magFilter, options.minFilter, options.format, options.type, options.anisotropy, options.colorSpace);
-        // By convention -- likely based on the RenderMan spec from the 1990's -- cube maps are specified by WebGL (and three.js)
-        // in a coordinate system in which positive-x is to the right when looking up the positive-z axis -- in other words,
-        // in a left-handed coordinate system. By continuing this convention, preexisting cube maps continued to render correctly.
-        // three.js uses a right-handed coordinate system. So environment maps used in three.js appear to have px and nx swapped
-        // and the flag isRenderTargetTexture controls this conversion. The flip is not required when using WebGLCubeRenderTarget.texture
-        // as a cube texture (this is detected when isRenderTargetTexture is set to true for cube textures).
-        this.texture.isRenderTargetTexture = true;
-        this.texture.generateMipmaps = options.generateMipmaps !== undefined ? options.generateMipmaps : false;
-        this.texture.minFilter = options.minFilter !== undefined ? options.minFilter : LinearFilter;
     }
 }
 

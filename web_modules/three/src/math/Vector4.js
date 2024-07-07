@@ -1,4 +1,11 @@
 class Vector4 {
+    constructor(x = 0, y = 0, z = 0, w = 1){
+        Vector4.prototype.isVector4 = true;
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.w = w;
+    }
     get width() {
         return this.z;
     }
@@ -245,6 +252,14 @@ class Vector4 {
         this.w = Math.acos((m11 + m22 + m33 - 1) / 2);
         return this;
     }
+    setFromMatrixPosition(m) {
+        const e = m.elements;
+        this.x = e[12];
+        this.y = e[13];
+        this.z = e[14];
+        this.w = e[15];
+        return this;
+    }
     min(v) {
         this.x = Math.min(this.x, v.x);
         this.y = Math.min(this.y, v.y);
@@ -384,13 +399,6 @@ class Vector4 {
         yield this.y;
         yield this.z;
         yield this.w;
-    }
-    constructor(x = 0, y = 0, z = 0, w = 1){
-        Vector4.prototype.isVector4 = true;
-        this.x = x;
-        this.y = y;
-        this.z = z;
-        this.w = w;
     }
 }
 

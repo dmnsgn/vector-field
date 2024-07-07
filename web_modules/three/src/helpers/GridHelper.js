@@ -24,10 +24,6 @@ import '../utils.js';
 import '../extras/DataUtils.js';
 
 class GridHelper extends LineSegments {
-    dispose() {
-        this.geometry.dispose();
-        this.material.dispose();
-    }
     constructor(size = 10, divisions = 10, color1 = 0x444444, color2 = 0x888888){
         color1 = new Color(color1);
         color2 = new Color(color2);
@@ -57,6 +53,10 @@ class GridHelper extends LineSegments {
         });
         super(geometry, material);
         this.type = 'GridHelper';
+    }
+    dispose() {
+        this.geometry.dispose();
+        this.material.dispose();
     }
 }
 

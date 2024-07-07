@@ -7,7 +7,7 @@ import '../../math/Vector3.js';
 import '../../math/Quaternion.js';
 import '../../math/Matrix4.js';
 import '../../constants.js';
-import '../../../../_chunks/Curves-1010459e.js';
+import '../../../../_chunks/Curves-cjyKFada.js';
 import '../curves/ArcCurve.js';
 import '../curves/EllipseCurve.js';
 import '../curves/CatmullRomCurve3.js';
@@ -21,6 +21,12 @@ import '../curves/QuadraticBezierCurve3.js';
 import '../curves/SplineCurve.js';
 
 class Shape extends Path {
+    constructor(points){
+        super(points);
+        this.uuid = generateUUID();
+        this.type = 'Shape';
+        this.holes = [];
+    }
     getPointsHoles(divisions) {
         const holesPts = [];
         for(let i = 0, l = this.holes.length; i < l; i++){
@@ -63,12 +69,6 @@ class Shape extends Path {
             this.holes.push(new Path().fromJSON(hole));
         }
         return this;
-    }
-    constructor(points){
-        super(points);
-        this.uuid = generateUUID();
-        this.type = 'Shape';
-        this.holes = [];
     }
 }
 

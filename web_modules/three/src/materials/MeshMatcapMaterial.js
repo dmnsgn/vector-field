@@ -8,27 +8,6 @@ import '../math/ColorManagement.js';
 import '../math/Matrix3.js';
 
 class MeshMatcapMaterial extends Material {
-    copy(source) {
-        super.copy(source);
-        this.defines = {
-            'MATCAP': ''
-        };
-        this.color.copy(source.color);
-        this.matcap = source.matcap;
-        this.map = source.map;
-        this.bumpMap = source.bumpMap;
-        this.bumpScale = source.bumpScale;
-        this.normalMap = source.normalMap;
-        this.normalMapType = source.normalMapType;
-        this.normalScale.copy(source.normalScale);
-        this.displacementMap = source.displacementMap;
-        this.displacementScale = source.displacementScale;
-        this.displacementBias = source.displacementBias;
-        this.alphaMap = source.alphaMap;
-        this.flatShading = source.flatShading;
-        this.fog = source.fog;
-        return this;
-    }
     constructor(parameters){
         super();
         this.isMeshMatcapMaterial = true;
@@ -51,6 +30,27 @@ class MeshMatcapMaterial extends Material {
         this.flatShading = false;
         this.fog = true;
         this.setValues(parameters);
+    }
+    copy(source) {
+        super.copy(source);
+        this.defines = {
+            'MATCAP': ''
+        };
+        this.color.copy(source.color);
+        this.matcap = source.matcap;
+        this.map = source.map;
+        this.bumpMap = source.bumpMap;
+        this.bumpScale = source.bumpScale;
+        this.normalMap = source.normalMap;
+        this.normalMapType = source.normalMapType;
+        this.normalScale.copy(source.normalScale);
+        this.displacementMap = source.displacementMap;
+        this.displacementScale = source.displacementScale;
+        this.displacementBias = source.displacementBias;
+        this.alphaMap = source.alphaMap;
+        this.flatShading = source.flatShading;
+        this.fog = source.fog;
+        return this;
     }
 }
 

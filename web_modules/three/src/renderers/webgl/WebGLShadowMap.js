@@ -20,6 +20,7 @@ import '../../extras/ImageUtils.js';
 import '../../utils.js';
 import '../../math/ColorManagement.js';
 import '../../materials/Material.js';
+import '../../math/Color.js';
 import '../shaders/UniformsUtils.js';
 import '../shaders/ShaderChunk/default_vertex.glsl.js';
 import '../shaders/ShaderChunk/default_fragment.glsl.js';
@@ -35,14 +36,13 @@ import '../../core/Layers.js';
 import '../../math/Ray.js';
 import '../../math/Triangle.js';
 import '../../materials/MeshBasicMaterial.js';
-import '../../math/Color.js';
 import '../../math/Plane.js';
 
-function WebGLShadowMap(_renderer, _objects, _capabilities) {
+function WebGLShadowMap(renderer, objects, capabilities) {
     let _frustum = new Frustum();
     const _shadowMapSize = new Vector2(), _viewportSize = new Vector2(), _viewport = new Vector4(), _depthMaterial = new MeshDepthMaterial({
         depthPacking: RGBADepthPacking
-    }), _distanceMaterial = new MeshDistanceMaterial(), _materialCache = {}, _maxTextureSize = _capabilities.maxTextureSize;
+    }), _distanceMaterial = new MeshDistanceMaterial(), _materialCache = {}, _maxTextureSize = capabilities.maxTextureSize;
     const shadowSide = {
         [FrontSide]: BackSide,
         [BackSide]: FrontSide,
@@ -91,10 +91,10 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
         if (scope.enabled === false) return;
         if (scope.autoUpdate === false && scope.needsUpdate === false) return;
         if (lights.length === 0) return;
-        const currentRenderTarget = _renderer.getRenderTarget();
-        const activeCubeFace = _renderer.getActiveCubeFace();
-        const activeMipmapLevel = _renderer.getActiveMipmapLevel();
-        const _state = _renderer.state;
+        const currentRenderTarget = renderer.getRenderTarget();
+        const activeCubeFace = renderer.getActiveCubeFace();
+        const activeMipmapLevel = renderer.getActiveMipmapLevel();
+        const _state = renderer.state;
         // Set GL state for depth map.
         _state.setBlending(NoBlending);
         _state.buffers.color.setClear(1, 1, 1, 1);
@@ -140,8 +140,8 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
                 shadow.map.texture.name = light.name + '.shadowMap';
                 shadow.camera.updateProjectionMatrix();
             }
-            _renderer.setRenderTarget(shadow.map);
-            _renderer.clear();
+            renderer.setRenderTarget(shadow.map);
+            renderer.clear();
             const viewportCount = shadow.getViewportCount();
             for(let vp = 0; vp < viewportCount; vp++){
                 const viewport = shadow.getViewport(vp);
@@ -159,10 +159,10 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
         }
         _previousType = this.type;
         scope.needsUpdate = false;
-        _renderer.setRenderTarget(currentRenderTarget, activeCubeFace, activeMipmapLevel);
+        renderer.setRenderTarget(currentRenderTarget, activeCubeFace, activeMipmapLevel);
     };
     function VSMPass(shadow, camera) {
-        const geometry = _objects.update(fullScreenMesh);
+        const geometry = objects.update(fullScreenMesh);
         if (shadowMaterialVertical.defines.VSM_SAMPLES !== shadow.blurSamples) {
             shadowMaterialVertical.defines.VSM_SAMPLES = shadow.blurSamples;
             shadowMaterialHorizontal.defines.VSM_SAMPLES = shadow.blurSamples;
@@ -176,16 +176,16 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
         shadowMaterialVertical.uniforms.shadow_pass.value = shadow.map.texture;
         shadowMaterialVertical.uniforms.resolution.value = shadow.mapSize;
         shadowMaterialVertical.uniforms.radius.value = shadow.radius;
-        _renderer.setRenderTarget(shadow.mapPass);
-        _renderer.clear();
-        _renderer.renderBufferDirect(camera, null, geometry, shadowMaterialVertical, fullScreenMesh, null);
+        renderer.setRenderTarget(shadow.mapPass);
+        renderer.clear();
+        renderer.renderBufferDirect(camera, null, geometry, shadowMaterialVertical, fullScreenMesh, null);
         // horizontal pass
         shadowMaterialHorizontal.uniforms.shadow_pass.value = shadow.mapPass.texture;
         shadowMaterialHorizontal.uniforms.resolution.value = shadow.mapSize;
         shadowMaterialHorizontal.uniforms.radius.value = shadow.radius;
-        _renderer.setRenderTarget(shadow.map);
-        _renderer.clear();
-        _renderer.renderBufferDirect(camera, null, geometry, shadowMaterialHorizontal, fullScreenMesh, null);
+        renderer.setRenderTarget(shadow.map);
+        renderer.clear();
+        renderer.renderBufferDirect(camera, null, geometry, shadowMaterialHorizontal, fullScreenMesh, null);
     }
     function getDepthMaterial(object, material, light, type) {
         let result = null;
@@ -194,7 +194,7 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
             result = customMaterial;
         } else {
             result = light.isPointLight === true ? _distanceMaterial : _depthMaterial;
-            if (_renderer.localClippingEnabled && material.clipShadows === true && Array.isArray(material.clippingPlanes) && material.clippingPlanes.length !== 0 || material.displacementMap && material.displacementScale !== 0 || material.alphaMap && material.alphaTest > 0 || material.map && material.alphaTest > 0) {
+            if (renderer.localClippingEnabled && material.clipShadows === true && Array.isArray(material.clippingPlanes) && material.clippingPlanes.length !== 0 || material.displacementMap && material.displacementScale !== 0 || material.alphaMap && material.alphaTest > 0 || material.map && material.alphaTest > 0) {
                 // in this case we need a unique material instance reflecting the
                 // appropriate state
                 const keyA = result.uuid, keyB = material.uuid;
@@ -207,6 +207,7 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
                 if (cachedMaterial === undefined) {
                     cachedMaterial = result.clone();
                     materialsForVariant[keyB] = cachedMaterial;
+                    material.addEventListener('dispose', onMaterialDispose);
                 }
                 result = cachedMaterial;
             }
@@ -230,7 +231,7 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
         result.wireframeLinewidth = material.wireframeLinewidth;
         result.linewidth = material.linewidth;
         if (light.isPointLight === true && result.isMeshDistanceMaterial === true) {
-            const materialProperties = _renderer.properties.get(result);
+            const materialProperties = renderer.properties.get(result);
             materialProperties.light = light;
         }
         return result;
@@ -241,7 +242,7 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
         if (visible && (object.isMesh || object.isLine || object.isPoints)) {
             if ((object.castShadow || object.receiveShadow && type === VSMShadowMap) && (!object.frustumCulled || _frustum.intersectsObject(object))) {
                 object.modelViewMatrix.multiplyMatrices(shadowCamera.matrixWorldInverse, object.matrixWorld);
-                const geometry = _objects.update(object);
+                const geometry = objects.update(object);
                 const material = object.material;
                 if (Array.isArray(material)) {
                     const groups = geometry.groups;
@@ -250,18 +251,36 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
                         const groupMaterial = material[group.materialIndex];
                         if (groupMaterial && groupMaterial.visible) {
                             const depthMaterial = getDepthMaterial(object, groupMaterial, light, type);
-                            _renderer.renderBufferDirect(shadowCamera, null, geometry, depthMaterial, object, group);
+                            object.onBeforeShadow(renderer, object, camera, shadowCamera, geometry, depthMaterial, group);
+                            renderer.renderBufferDirect(shadowCamera, null, geometry, depthMaterial, object, group);
+                            object.onAfterShadow(renderer, object, camera, shadowCamera, geometry, depthMaterial, group);
                         }
                     }
                 } else if (material.visible) {
                     const depthMaterial = getDepthMaterial(object, material, light, type);
-                    _renderer.renderBufferDirect(shadowCamera, null, geometry, depthMaterial, object, null);
+                    object.onBeforeShadow(renderer, object, camera, shadowCamera, geometry, depthMaterial, null);
+                    renderer.renderBufferDirect(shadowCamera, null, geometry, depthMaterial, object, null);
+                    object.onAfterShadow(renderer, object, camera, shadowCamera, geometry, depthMaterial, null);
                 }
             }
         }
         const children = object.children;
         for(let i = 0, l = children.length; i < l; i++){
             renderObject(children[i], camera, shadowCamera, light, type);
+        }
+    }
+    function onMaterialDispose(event) {
+        const material = event.target;
+        material.removeEventListener('dispose', onMaterialDispose);
+        // make sure to remove the unique distance/depth materials used for shadow map rendering
+        for(const id in _materialCache){
+            const cache = _materialCache[id];
+            const uuid = event.target.uuid;
+            if (uuid in cache) {
+                const shadowMaterial = cache[uuid];
+                shadowMaterial.dispose();
+                delete cache[uuid];
+            }
         }
     }
 }

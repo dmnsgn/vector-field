@@ -4,6 +4,8 @@ import { PlaneGeometry } from '../../geometries/PlaneGeometry.js';
 import { ShaderMaterial } from '../../materials/ShaderMaterial.js';
 import { Color } from '../../math/Color.js';
 import { ColorManagement } from '../../math/ColorManagement.js';
+import { Euler } from '../../math/Euler.js';
+import { Matrix4 } from '../../math/Matrix4.js';
 import { Mesh } from '../../objects/Mesh.js';
 import { ShaderLib } from '../shaders/ShaderLib.js';
 import { cloneUniforms, getUnlitUniformColorSpace } from '../shaders/UniformsUtils.js';
@@ -16,13 +18,11 @@ import '../../math/Box3.js';
 import '../../core/EventDispatcher.js';
 import '../../core/BufferAttribute.js';
 import '../../extras/DataUtils.js';
+import '../../utils.js';
 import '../../math/Sphere.js';
 import '../../core/Object3D.js';
-import '../../math/Matrix4.js';
-import '../../math/Euler.js';
 import '../../core/Layers.js';
 import '../../math/Matrix3.js';
-import '../../utils.js';
 import '../../materials/Material.js';
 import '../shaders/ShaderChunk/default_vertex.glsl.js';
 import '../shaders/ShaderChunk/default_fragment.glsl.js';
@@ -38,6 +38,8 @@ import '../shaders/ShaderChunk/alphatest_fragment.glsl.js';
 import '../shaders/ShaderChunk/alphatest_pars_fragment.glsl.js';
 import '../shaders/ShaderChunk/aomap_fragment.glsl.js';
 import '../shaders/ShaderChunk/aomap_pars_fragment.glsl.js';
+import '../shaders/ShaderChunk/batching_pars_vertex.glsl.js';
+import '../shaders/ShaderChunk/batching_vertex.glsl.js';
 import '../shaders/ShaderChunk/begin_vertex.glsl.js';
 import '../shaders/ShaderChunk/beginnormal_vertex.glsl.js';
 import '../shaders/ShaderChunk/bsdfs.glsl.js';
@@ -70,7 +72,6 @@ import '../shaders/ShaderChunk/fog_pars_vertex.glsl.js';
 import '../shaders/ShaderChunk/fog_fragment.glsl.js';
 import '../shaders/ShaderChunk/fog_pars_fragment.glsl.js';
 import '../shaders/ShaderChunk/gradientmap_pars_fragment.glsl.js';
-import '../shaders/ShaderChunk/lightmap_fragment.glsl.js';
 import '../shaders/ShaderChunk/lightmap_pars_fragment.glsl.js';
 import '../shaders/ShaderChunk/lights_lambert_fragment.glsl.js';
 import '../shaders/ShaderChunk/lights_lambert_pars_fragment.glsl.js';
@@ -95,6 +96,7 @@ import '../shaders/ShaderChunk/map_particle_fragment.glsl.js';
 import '../shaders/ShaderChunk/map_particle_pars_fragment.glsl.js';
 import '../shaders/ShaderChunk/metalnessmap_fragment.glsl.js';
 import '../shaders/ShaderChunk/metalnessmap_pars_fragment.glsl.js';
+import '../shaders/ShaderChunk/morphinstance_vertex.glsl.js';
 import '../shaders/ShaderChunk/morphcolor_vertex.glsl.js';
 import '../shaders/ShaderChunk/morphnormal_vertex.glsl.js';
 import '../shaders/ShaderChunk/morphtarget_pars_vertex.glsl.js';
@@ -159,6 +161,8 @@ const _rgb = {
     b: 0,
     g: 0
 };
+const _e1 = /*@__PURE__*/ new Euler();
+const _m1 = /*@__PURE__*/ new Matrix4();
 function WebGLBackground(renderer, cubemaps, cubeuvmaps, state, objects, alpha, premultipliedAlpha) {
     const clearColor = new Color(0x000000);
     let clearAlpha = alpha === true ? 0 : 1;
@@ -167,13 +171,17 @@ function WebGLBackground(renderer, cubemaps, cubeuvmaps, state, objects, alpha, 
     let currentBackground = null;
     let currentBackgroundVersion = 0;
     let currentTonemapping = null;
-    function render(renderList, scene) {
-        let forceClear = false;
+    function getBackground(scene) {
         let background = scene.isScene === true ? scene.background : null;
         if (background && background.isTexture) {
             const usePMREM = scene.backgroundBlurriness > 0; // use PMREM if the user wants to blur the background
             background = (usePMREM ? cubeuvmaps : cubemaps).get(background);
         }
+        return background;
+    }
+    function render(scene) {
+        let forceClear = false;
+        const background = getBackground(scene);
         if (background === null) {
             setClear(clearColor, clearAlpha);
         } else if (background && background.isColor) {
@@ -187,8 +195,15 @@ function WebGLBackground(renderer, cubemaps, cubeuvmaps, state, objects, alpha, 
             state.buffers.color.setClear(0, 0, 0, 0, premultipliedAlpha);
         }
         if (renderer.autoClear || forceClear) {
+            // buffers might not be writable which is required to ensure a correct clear
+            state.buffers.depth.setTest(true);
+            state.buffers.depth.setMask(true);
+            state.buffers.color.setMask(true);
             renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
         }
+    }
+    function addToRenderList(renderList, scene) {
+        const background = getBackground(scene);
         if (background && (background.isCubeTexture || background.mapping === CubeUVReflectionMapping)) {
             if (boxMesh === undefined) {
                 boxMesh = new Mesh(new BoxGeometry(1, 1, 1), new ShaderMaterial({
@@ -214,10 +229,21 @@ function WebGLBackground(renderer, cubemaps, cubeuvmaps, state, objects, alpha, 
                 });
                 objects.update(boxMesh);
             }
+            _e1.copy(scene.backgroundRotation);
+            // accommodate left-handed frame
+            _e1.x *= -1;
+            _e1.y *= -1;
+            _e1.z *= -1;
+            if (background.isCubeTexture && background.isRenderTargetTexture === false) {
+                // environment maps which are not cube render targets or PMREMs follow a different convention
+                _e1.y *= -1;
+                _e1.z *= -1;
+            }
             boxMesh.material.uniforms.envMap.value = background;
             boxMesh.material.uniforms.flipEnvMap.value = background.isCubeTexture && background.isRenderTargetTexture === false ? -1 : 1;
             boxMesh.material.uniforms.backgroundBlurriness.value = scene.backgroundBlurriness;
             boxMesh.material.uniforms.backgroundIntensity.value = scene.backgroundIntensity;
+            boxMesh.material.uniforms.backgroundRotation.value.setFromMatrix4(_m1.makeRotationFromEuler(_e1));
             boxMesh.material.toneMapped = ColorManagement.getTransfer(background.colorSpace) !== SRGBTransfer;
             if (currentBackground !== background || currentBackgroundVersion !== background.version || currentTonemapping !== renderer.toneMapping) {
                 boxMesh.material.needsUpdate = true;
@@ -288,7 +314,8 @@ function WebGLBackground(renderer, cubemaps, cubeuvmaps, state, objects, alpha, 
             clearAlpha = alpha;
             setClear(clearColor, clearAlpha);
         },
-        render: render
+        render: render,
+        addToRenderList: addToRenderList
     };
 }
 

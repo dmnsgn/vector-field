@@ -24,10 +24,6 @@ import '../utils.js';
 import '../extras/DataUtils.js';
 
 class PolarGridHelper extends LineSegments {
-    dispose() {
-        this.geometry.dispose();
-        this.material.dispose();
-    }
     constructor(radius = 10, sectors = 16, rings = 8, divisions = 64, color1 = 0x444444, color2 = 0x888888){
         color1 = new Color(color1);
         color2 = new Color(color2);
@@ -74,6 +70,10 @@ class PolarGridHelper extends LineSegments {
         });
         super(geometry, material);
         this.type = 'PolarGridHelper';
+    }
+    dispose() {
+        this.geometry.dispose();
+        this.material.dispose();
     }
 }
 

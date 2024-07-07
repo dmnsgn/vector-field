@@ -1,4 +1,11 @@
 class Clock {
+    constructor(autoStart = true){
+        this.autoStart = autoStart;
+        this.startTime = 0;
+        this.oldTime = 0;
+        this.elapsedTime = 0;
+        this.running = false;
+    }
     start() {
         this.startTime = now();
         this.oldTime = this.startTime;
@@ -27,13 +34,6 @@ class Clock {
             this.elapsedTime += diff;
         }
         return diff;
-    }
-    constructor(autoStart = true){
-        this.autoStart = autoStart;
-        this.startTime = 0;
-        this.oldTime = 0;
-        this.elapsedTime = 0;
-        this.running = false;
     }
 }
 function now() {

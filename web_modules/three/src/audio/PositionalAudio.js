@@ -15,6 +15,12 @@ const _quaternion = /*@__PURE__*/ new Quaternion();
 const _scale = /*@__PURE__*/ new Vector3();
 const _orientation = /*@__PURE__*/ new Vector3();
 class PositionalAudio extends Audio {
+    constructor(listener){
+        super(listener);
+        this.panner = this.context.createPanner();
+        this.panner.panningModel = 'HRTF';
+        this.panner.connect(this.gain);
+    }
     connect() {
         super.connect();
         this.panner.connect(this.gain);
@@ -79,12 +85,6 @@ class PositionalAudio extends Audio {
             panner.setPosition(_position.x, _position.y, _position.z);
             panner.setOrientation(_orientation.x, _orientation.y, _orientation.z);
         }
-    }
-    constructor(listener){
-        super(listener);
-        this.panner = this.context.createPanner();
-        this.panner.panningModel = 'HRTF';
-        this.panner.connect(this.gain);
     }
 }
 

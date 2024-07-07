@@ -12,6 +12,21 @@ import '../math/Matrix3.js';
 const _v1 = /*@__PURE__*/ new Vector3();
 const _v2 = /*@__PURE__*/ new Vector3();
 class LOD extends Object3D {
+    constructor(){
+        super();
+        this._currentLevel = 0;
+        this.type = 'LOD';
+        Object.defineProperties(this, {
+            levels: {
+                enumerable: true,
+                value: []
+            },
+            isLOD: {
+                value: true
+            }
+        });
+        this.autoUpdate = true;
+    }
     copy(source) {
         super.copy(source, false);
         const levels = source.levels;
@@ -109,21 +124,6 @@ class LOD extends Object3D {
             });
         }
         return data;
-    }
-    constructor(){
-        super();
-        this._currentLevel = 0;
-        this.type = 'LOD';
-        Object.defineProperties(this, {
-            levels: {
-                enumerable: true,
-                value: []
-            },
-            isLOD: {
-                value: true
-            }
-        });
-        this.autoUpdate = true;
     }
 }
 

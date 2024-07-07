@@ -16,6 +16,17 @@ const _quaternion = /*@__PURE__*/ new Quaternion();
 const _scale = /*@__PURE__*/ new Vector3();
 const _orientation = /*@__PURE__*/ new Vector3();
 class AudioListener extends Object3D {
+    constructor(){
+        super();
+        this.type = 'AudioListener';
+        this.context = AudioContext.getContext();
+        this.gain = this.context.createGain();
+        this.gain.connect(this.context.destination);
+        this.filter = null;
+        this.timeDelta = 0;
+        // private
+        this._clock = new Clock();
+    }
     getInput() {
         return this.gain;
     }
@@ -73,17 +84,6 @@ class AudioListener extends Object3D {
             listener.setPosition(_position.x, _position.y, _position.z);
             listener.setOrientation(_orientation.x, _orientation.y, _orientation.z, up.x, up.y, up.z);
         }
-    }
-    constructor(){
-        super();
-        this.type = 'AudioListener';
-        this.context = AudioContext.getContext();
-        this.gain = this.context.createGain();
-        this.gain.connect(this.context.destination);
-        this.filter = null;
-        this.timeDelta = 0;
-        // private
-        this._clock = new Clock();
     }
 }
 

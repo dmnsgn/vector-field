@@ -25,6 +25,46 @@ import '../extras/DataUtils.js';
 
 const _box = /*@__PURE__*/ new Box3();
 class BoxHelper extends LineSegments {
+    constructor(object, color = 0xffff00){
+        const indices = new Uint16Array([
+            0,
+            1,
+            1,
+            2,
+            2,
+            3,
+            3,
+            0,
+            4,
+            5,
+            5,
+            6,
+            6,
+            7,
+            7,
+            4,
+            0,
+            4,
+            1,
+            5,
+            2,
+            6,
+            3,
+            7
+        ]);
+        const positions = new Float32Array(8 * 3);
+        const geometry = new BufferGeometry();
+        geometry.setIndex(new BufferAttribute(indices, 1));
+        geometry.setAttribute('position', new BufferAttribute(positions, 3));
+        super(geometry, new LineBasicMaterial({
+            color: color,
+            toneMapped: false
+        }));
+        this.object = object;
+        this.type = 'BoxHelper';
+        this.matrixAutoUpdate = false;
+        this.update();
+    }
     update(object) {
         if (object !== undefined) {
             console.warn('THREE.BoxHelper: .update() has no longer arguments.');
@@ -91,46 +131,6 @@ class BoxHelper extends LineSegments {
     dispose() {
         this.geometry.dispose();
         this.material.dispose();
-    }
-    constructor(object, color = 0xffff00){
-        const indices = new Uint16Array([
-            0,
-            1,
-            1,
-            2,
-            2,
-            3,
-            3,
-            0,
-            4,
-            5,
-            5,
-            6,
-            6,
-            7,
-            7,
-            4,
-            0,
-            4,
-            1,
-            5,
-            2,
-            6,
-            3,
-            7
-        ]);
-        const positions = new Float32Array(8 * 3);
-        const geometry = new BufferGeometry();
-        geometry.setIndex(new BufferAttribute(indices, 1));
-        geometry.setAttribute('position', new BufferAttribute(positions, 3));
-        super(geometry, new LineBasicMaterial({
-            color: color,
-            toneMapped: false
-        }));
-        this.object = object;
-        this.type = 'BoxHelper';
-        this.matrixAutoUpdate = false;
-        this.update();
     }
 }
 

@@ -59,7 +59,7 @@ function filterPoints(start, end) {
         } else {
             p = p.next;
         }
-    }while (again || p !== end)
+    }while (again || p !== end);
     return end;
 }
 // main ear slicing loop which triangulates a polygon (given as a linked list)
@@ -159,7 +159,7 @@ function cureLocalIntersections(start, triangles, dim) {
             p = start = b;
         }
         p = p.next;
-    }while (p !== start)
+    }while (p !== start);
     return filterPoints(p);
 }
 // try splitting polygon into two and triangulate them independently
@@ -183,7 +183,7 @@ function splitEarcut(start, triangles, dim, minX, minY, invSize) {
             b = b.next;
         }
         a = a.next;
-    }while (a !== start)
+    }while (a !== start);
 }
 // link every hole into the outer loop, producing a single-ring polygon without holes
 function eliminateHoles(data, holeIndices, outerNode, dim) {
@@ -233,7 +233,7 @@ function findHoleBridge(hole, outerNode) {
             }
         }
         p = p.next;
-    }while (p !== outerNode)
+    }while (p !== outerNode);
     if (!m) return null;
     // look for points inside the triangle of hole point, segment intersection and endpoint;
     // if there are no points found, we have a valid connection;
@@ -250,7 +250,7 @@ function findHoleBridge(hole, outerNode) {
             }
         }
         p = p.next;
-    }while (p !== stop)
+    }while (p !== stop);
     return m;
 }
 // whether sector in vertex m contains sector in vertex p in the same coordinates
@@ -265,7 +265,7 @@ function indexCurve(start, minX, minY, invSize) {
         p.prevZ = p.prev;
         p.nextZ = p.next;
         p = p.next;
-    }while (p !== start)
+    }while (p !== start);
     p.prevZ.nextZ = null;
     p.prevZ = null;
     sortLinked(p);
@@ -308,7 +308,7 @@ function sortLinked(list) {
         }
         tail.nextZ = null;
         inSize *= 2;
-    }while (numMerges > 1)
+    }while (numMerges > 1);
     return list;
 }
 // z-order of a point given coords and inverse of the longer side of data bbox
@@ -332,7 +332,7 @@ function getLeftmost(start) {
     do {
         if (p.x < leftmost.x || p.x === leftmost.x && p.y < leftmost.y) leftmost = p;
         p = p.next;
-    }while (p !== start)
+    }while (p !== start);
     return leftmost;
 }
 // check if a point lies within a convex triangle
@@ -380,7 +380,7 @@ function intersectsPolygon(a, b) {
     do {
         if (p.i !== a.i && p.next.i !== a.i && p.i !== b.i && p.next.i !== b.i && intersects(p, p.next, a, b)) return true;
         p = p.next;
-    }while (p !== a)
+    }while (p !== a);
     return false;
 }
 // check if a polygon diagonal is locally inside the polygon
@@ -394,7 +394,7 @@ function middleInside(a, b) {
     do {
         if (p.y > py !== p.next.y > py && p.next.y !== p.y && px < (p.next.x - p.x) * (py - p.y) / (p.next.y - p.y) + p.x) inside = !inside;
         p = p.next;
-    }while (p !== a)
+    }while (p !== a);
     return inside;
 }
 // link two polygon vertices with a bridge; if the vertices belong to the same ring, it splits polygon into two;

@@ -2,7 +2,7 @@ import { RGBAFormat, FloatType } from '../constants.js';
 import { Bone } from './Bone.js';
 import { Matrix4 } from '../math/Matrix4.js';
 import { DataTexture } from '../textures/DataTexture.js';
-import { generateUUID, ceilPowerOfTwo } from '../math/MathUtils.js';
+import { generateUUID } from '../math/MathUtils.js';
 import '../core/Object3D.js';
 import '../math/Quaternion.js';
 import '../math/Vector3.js';
@@ -20,6 +20,14 @@ import '../math/ColorManagement.js';
 const _offsetMatrix = /*@__PURE__*/ new Matrix4();
 const _identityMatrix = /*@__PURE__*/ new Matrix4();
 class Skeleton {
+    constructor(bones = [], boneInverses = []){
+        this.uuid = generateUUID();
+        this.bones = bones.slice(0);
+        this.boneInverses = boneInverses;
+        this.boneMatrices = null;
+        this.boneTexture = null;
+        this.init();
+    }
     init() {
         const bones = this.bones;
         const boneInverses = this.boneInverses;
@@ -97,7 +105,7 @@ class Skeleton {
         //       32x32 pixel texture max  256 bones * 4 pixels = (32 * 32)
         //       64x64 pixel texture max 1024 bones * 4 pixels = (64 * 64)
         let size = Math.sqrt(this.bones.length * 4); // 4 pixels needed for 1 matrix
-        size = ceilPowerOfTwo(size);
+        size = Math.ceil(size / 4) * 4;
         size = Math.max(size, 4);
         const boneMatrices = new Float32Array(size * size * 4); // 4 floats per RGBA pixel
         boneMatrices.set(this.boneMatrices); // copy current values
@@ -105,7 +113,6 @@ class Skeleton {
         boneTexture.needsUpdate = true;
         this.boneMatrices = boneMatrices;
         this.boneTexture = boneTexture;
-        this.boneTextureSize = size;
         return this;
     }
     getBoneByName(name) {
@@ -158,15 +165,6 @@ class Skeleton {
             data.boneInverses.push(boneInverse.toArray());
         }
         return data;
-    }
-    constructor(bones = [], boneInverses = []){
-        this.uuid = generateUUID();
-        this.bones = bones.slice(0);
-        this.boneInverses = boneInverses;
-        this.boneMatrices = null;
-        this.boneTexture = null;
-        this.boneTextureSize = 0;
-        this.init();
     }
 }
 

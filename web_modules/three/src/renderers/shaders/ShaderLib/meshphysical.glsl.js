@@ -10,6 +10,7 @@ varying vec3 vViewPosition;
 #endif
 
 #include <common>
+#include <batching_pars_vertex>
 #include <uv_pars_vertex>
 #include <displacementmap_pars_vertex>
 #include <color_pars_vertex>
@@ -25,7 +26,9 @@ void main() {
 
 	#include <uv_vertex>
 	#include <color_vertex>
+	#include <morphinstance_vertex>
 	#include <morphcolor_vertex>
+	#include <batching_vertex>
 
 	#include <beginnormal_vertex>
 	#include <morphnormal_vertex>
@@ -91,6 +94,10 @@ uniform float opacity;
 	uniform float clearcoatRoughness;
 #endif
 
+#ifdef USE_DISPERSION
+	uniform float dispersion;
+#endif
+
 #ifdef USE_IRIDESCENCE
 	uniform float iridescence;
 	uniform float iridescenceIOR;
@@ -154,9 +161,9 @@ varying vec3 vViewPosition;
 
 void main() {
 
+	vec4 diffuseColor = vec4( diffuse, opacity );
 	#include <clipping_planes_fragment>
 
-	vec4 diffuseColor = vec4( diffuse, opacity );
 	ReflectedLight reflectedLight = ReflectedLight( vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ) );
 	vec3 totalEmissiveRadiance = emissive;
 
@@ -196,7 +203,7 @@ void main() {
 		// https://drive.google.com/file/d/1T0D1VSyR4AllqIJTQAraEIzjlb5h4FKH/view?usp=sharing
 		float sheenEnergyComp = 1.0 - 0.157 * max3( material.sheenColor );
 
-		outgoingLight = outgoingLight * sheenEnergyComp + sheenSpecular;
+		outgoingLight = outgoingLight * sheenEnergyComp + sheenSpecularDirect + sheenSpecularIndirect;
 
 	#endif
 
@@ -206,7 +213,7 @@ void main() {
 
 		vec3 Fcc = F_Schlick( material.clearcoatF0, material.clearcoatF90, dotNVcc );
 
-		outgoingLight = outgoingLight * ( 1.0 - material.clearcoat * Fcc ) + clearcoatSpecular * material.clearcoat;
+		outgoingLight = outgoingLight * ( 1.0 - material.clearcoat * Fcc ) + ( clearcoatSpecularDirect + clearcoatSpecularIndirect ) * material.clearcoat;
 
 	#endif
 

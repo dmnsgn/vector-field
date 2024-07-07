@@ -2,7 +2,8 @@ import { CubeTexture } from '../../textures/CubeTexture.js';
 import { Texture } from '../../textures/Texture.js';
 import { DataArrayTexture } from '../../textures/DataArrayTexture.js';
 import { Data3DTexture } from '../../textures/Data3DTexture.js';
-import '../../constants.js';
+import { DepthTexture } from '../../textures/DepthTexture.js';
+import { LessEqualCompare } from '../../constants.js';
 import '../../core/EventDispatcher.js';
 import '../../math/MathUtils.js';
 import '../../math/Vector2.js';
@@ -13,6 +14,7 @@ import '../../utils.js';
 import '../../math/ColorManagement.js';
 
 const emptyTexture = /*@__PURE__*/ new Texture();
+const emptyShadowTexture = /*@__PURE__*/ new DepthTexture(1, 1);
 const emptyArrayTexture = /*@__PURE__*/ new DataArrayTexture();
 const empty3dTexture = /*@__PURE__*/ new Data3DTexture();
 const emptyCubeTexture = /*@__PURE__*/ new CubeTexture();
@@ -289,7 +291,14 @@ function setValueT1(gl, v, textures) {
         gl.uniform1i(this.addr, unit);
         cache[0] = unit;
     }
-    textures.setTexture2D(v || emptyTexture, unit);
+    let emptyTexture2D;
+    if (this.type === gl.SAMPLER_2D_SHADOW) {
+        emptyShadowTexture.compareFunction = LessEqualCompare; // #28670
+        emptyTexture2D = emptyShadowTexture;
+    } else {
+        emptyTexture2D = emptyTexture;
+    }
+    textures.setTexture2D(v || emptyTexture2D, unit);
 }
 function setValueT3D1(gl, v, textures) {
     const cache = this.cache;
@@ -549,6 +558,7 @@ class SingleUniform {
         this.id = id;
         this.addr = addr;
         this.cache = [];
+        this.type = activeInfo.type;
         this.setValue = getSingularSetter(activeInfo.type);
     // this.path = activeInfo.name; // DEBUG
     }
@@ -558,23 +568,24 @@ class PureArrayUniform {
         this.id = id;
         this.addr = addr;
         this.cache = [];
+        this.type = activeInfo.type;
         this.size = activeInfo.size;
         this.setValue = getPureArraySetter(activeInfo.type);
     // this.path = activeInfo.name; // DEBUG
     }
 }
 class StructuredUniform {
+    constructor(id){
+        this.id = id;
+        this.seq = [];
+        this.map = {};
+    }
     setValue(gl, value, textures) {
         const seq = this.seq;
         for(let i = 0, n = seq.length; i !== n; ++i){
             const u = seq[i];
             u.setValue(gl, value[u.id], textures);
         }
-    }
-    constructor(id){
-        this.id = id;
-        this.seq = [];
-        this.map = {};
     }
 }
 // --- Top-level ---
@@ -619,6 +630,15 @@ function parseUniform(activeInfo, addr, container) {
 }
 // Root Container
 class WebGLUniforms {
+    constructor(gl, program){
+        this.seq = [];
+        this.map = {};
+        const n = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
+        for(let i = 0; i < n; ++i){
+            const info = gl.getActiveUniform(program, i), addr = gl.getUniformLocation(program, info.name);
+            parseUniform(info, addr, this);
+        }
+    }
     setValue(gl, name, value, textures) {
         const u = this.map[name];
         if (u !== undefined) u.setValue(gl, value, textures);
@@ -643,15 +663,6 @@ class WebGLUniforms {
             if (u.id in values) r.push(u);
         }
         return r;
-    }
-    constructor(gl, program){
-        this.seq = [];
-        this.map = {};
-        const n = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
-        for(let i = 0; i < n; ++i){
-            const info = gl.getActiveUniform(program, i), addr = gl.getUniformLocation(program, info.name);
-            parseUniform(info, addr, this);
-        }
     }
 }
 

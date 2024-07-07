@@ -7,6 +7,12 @@ const _vector1 = /*@__PURE__*/ new Vector3();
 const _vector2 = /*@__PURE__*/ new Vector3();
 const _normalMatrix = /*@__PURE__*/ new Matrix3();
 class Plane {
+    constructor(normal = new Vector3(1, 0, 0), constant = 0){
+        this.isPlane = true;
+        // normal is assumed to be normalized
+        this.normal = normal;
+        this.constant = constant;
+    }
     set(normal, constant) {
         this.normal.copy(normal);
         this.constant = constant;
@@ -102,12 +108,6 @@ class Plane {
     }
     clone() {
         return new this.constructor().copy(this);
-    }
-    constructor(normal = new Vector3(1, 0, 0), constant = 0){
-        this.isPlane = true;
-        // normal is assumed to be normalized
-        this.normal = normal;
-        this.constant = constant;
     }
 }
 

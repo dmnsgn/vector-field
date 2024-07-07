@@ -62,6 +62,15 @@ const px = /*@__PURE__*/ new CubicPoly();
 const py = /*@__PURE__*/ new CubicPoly();
 const pz = /*@__PURE__*/ new CubicPoly();
 class CatmullRomCurve3 extends Curve {
+    constructor(points = [], closed = false, curveType = 'centripetal', tension = 0.5){
+        super();
+        this.isCatmullRomCurve3 = true;
+        this.type = 'CatmullRomCurve3';
+        this.points = points;
+        this.closed = closed;
+        this.curveType = curveType;
+        this.tension = tension;
+    }
     getPoint(t, optionalTarget) {
         if (optionalTarget === void 0) optionalTarget = new Vector3();
         const point = optionalTarget;
@@ -149,15 +158,6 @@ class CatmullRomCurve3 extends Curve {
         this.curveType = json.curveType;
         this.tension = json.tension;
         return this;
-    }
-    constructor(points = [], closed = false, curveType = 'centripetal', tension = 0.5){
-        super();
-        this.isCatmullRomCurve3 = true;
-        this.type = 'CatmullRomCurve3';
-        this.points = points;
-        this.closed = closed;
-        this.curveType = curveType;
-        this.tension = tension;
     }
 }
 

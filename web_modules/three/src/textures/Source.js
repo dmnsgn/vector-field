@@ -7,6 +7,16 @@ import '../math/Matrix3.js';
 
 let _sourceId = 0;
 class Source {
+    constructor(data = null){
+        this.isSource = true;
+        Object.defineProperty(this, 'id', {
+            value: _sourceId++
+        });
+        this.uuid = generateUUID();
+        this.data = data;
+        this.dataReady = true;
+        this.version = 0;
+    }
     set needsUpdate(value) {
         if (value === true) this.version++;
     }
@@ -42,15 +52,6 @@ class Source {
             meta.images[this.uuid] = output;
         }
         return output;
-    }
-    constructor(data = null){
-        this.isSource = true;
-        Object.defineProperty(this, 'id', {
-            value: _sourceId++
-        });
-        this.uuid = generateUUID();
-        this.data = data;
-        this.version = 0;
     }
 }
 function serializeImage(image) {

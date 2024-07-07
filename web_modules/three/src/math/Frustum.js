@@ -10,6 +10,16 @@ import './Matrix3.js';
 const _sphere = /*@__PURE__*/ new Sphere();
 const _vector = /*@__PURE__*/ new Vector3();
 class Frustum {
+    constructor(p0 = new Plane(), p1 = new Plane(), p2 = new Plane(), p3 = new Plane(), p4 = new Plane(), p5 = new Plane()){
+        this.planes = [
+            p0,
+            p1,
+            p2,
+            p3,
+            p4,
+            p5
+        ];
+    }
     set(p0, p1, p2, p3, p4, p5) {
         const planes = this.planes;
         planes[0].copy(p0);
@@ -103,16 +113,6 @@ class Frustum {
     }
     clone() {
         return new this.constructor().copy(this);
-    }
-    constructor(p0 = new Plane(), p1 = new Plane(), p2 = new Plane(), p3 = new Plane(), p4 = new Plane(), p5 = new Plane()){
-        this.planes = [
-            p0,
-            p1,
-            p2,
-            p3,
-            p4,
-            p5
-        ];
     }
 }
 

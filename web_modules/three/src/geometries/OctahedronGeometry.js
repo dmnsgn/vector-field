@@ -9,18 +9,15 @@ import '../core/EventDispatcher.js';
 import '../core/BufferAttribute.js';
 import '../constants.js';
 import '../extras/DataUtils.js';
+import '../utils.js';
 import '../math/Sphere.js';
 import '../core/Object3D.js';
 import '../math/Matrix4.js';
 import '../math/Euler.js';
 import '../core/Layers.js';
 import '../math/Matrix3.js';
-import '../utils.js';
 
 class OctahedronGeometry extends PolyhedronGeometry {
-    static fromJSON(data) {
-        return new OctahedronGeometry(data.radius, data.detail);
-    }
     constructor(radius = 1, detail = 0){
         const vertices = [
             1,
@@ -74,6 +71,9 @@ class OctahedronGeometry extends PolyhedronGeometry {
             radius: radius,
             detail: detail
         };
+    }
+    static fromJSON(data) {
+        return new OctahedronGeometry(data.radius, data.detail);
     }
 }
 

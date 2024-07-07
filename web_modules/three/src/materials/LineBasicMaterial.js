@@ -7,16 +7,6 @@ import '../math/ColorManagement.js';
 import '../math/Matrix3.js';
 
 class LineBasicMaterial extends Material {
-    copy(source) {
-        super.copy(source);
-        this.color.copy(source.color);
-        this.map = source.map;
-        this.linewidth = source.linewidth;
-        this.linecap = source.linecap;
-        this.linejoin = source.linejoin;
-        this.fog = source.fog;
-        return this;
-    }
     constructor(parameters){
         super();
         this.isLineBasicMaterial = true;
@@ -28,6 +18,16 @@ class LineBasicMaterial extends Material {
         this.linejoin = 'round';
         this.fog = true;
         this.setValues(parameters);
+    }
+    copy(source) {
+        super.copy(source);
+        this.color.copy(source.color);
+        this.map = source.map;
+        this.linewidth = source.linewidth;
+        this.linecap = source.linecap;
+        this.linejoin = source.linejoin;
+        this.fog = source.fog;
+        return this;
     }
 }
 

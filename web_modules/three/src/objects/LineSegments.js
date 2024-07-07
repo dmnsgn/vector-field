@@ -25,6 +25,11 @@ import '../extras/DataUtils.js';
 const _start = /*@__PURE__*/ new Vector3();
 const _end = /*@__PURE__*/ new Vector3();
 class LineSegments extends Line {
+    constructor(geometry, material){
+        super(geometry, material);
+        this.isLineSegments = true;
+        this.type = 'LineSegments';
+    }
     computeLineDistances() {
         const geometry = this.geometry;
         // we assume non-indexed geometry
@@ -42,11 +47,6 @@ class LineSegments extends Line {
             console.warn('THREE.LineSegments.computeLineDistances(): Computation only possible with non-indexed BufferGeometry.');
         }
         return this;
-    }
-    constructor(geometry, material){
-        super(geometry, material);
-        this.isLineSegments = true;
-        this.type = 'LineSegments';
     }
 }
 

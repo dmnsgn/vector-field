@@ -1,4 +1,4 @@
-/*! Tweakpane 4.0.1 (c) 2016 cocopon, licensed under the MIT license. */ function forceCast(v) {
+/*! Tweakpane 4.0.4 (c) 2016 cocopon, licensed under the MIT license. */ function forceCast(v) {
     return v;
 }
 function isEmpty(value) {
@@ -84,9 +84,6 @@ class TpError {
             type: 'shouldneverhappen'
         });
     }
-    toString() {
-        return this.message;
-    }
     constructor(config){
         var _a;
         this.message = (_a = CREATE_MESSAGE_MAP[config.type](forceCast(config.context))) !== null && _a !== void 0 ? _a : 'Unexpected error';
@@ -94,8 +91,15 @@ class TpError {
         this.stack = new Error(this.message).stack;
         this.type = config.type;
     }
+    toString() {
+        return this.message;
+    }
 }
 class BindingTarget {
+    constructor(obj, key){
+        this.obj_ = obj;
+        this.key = key;
+    }
     static isBindable(obj) {
         if (obj === null) {
             return false;
@@ -121,27 +125,28 @@ class BindingTarget {
         }
         valueObj[name] = value;
     }
-    constructor(obj, key){
-        this.obj_ = obj;
-        this.key = key;
-    }
 }
 class Emitter {
-    on(eventName, handler) {
+    constructor(){
+        this.observers_ = {};
+    }
+    on(eventName, handler, opt_options) {
+        var _a;
         let observers = this.observers_[eventName];
         if (!observers) {
             observers = this.observers_[eventName] = [];
         }
         observers.push({
-            handler: handler
+            handler: handler,
+            key: (_a = opt_options === null || opt_options === void 0 ? void 0 : opt_options.key) !== null && _a !== void 0 ? _a : handler
         });
         return this;
     }
-    off(eventName, handler) {
+    off(eventName, key) {
         const observers = this.observers_[eventName];
         if (observers) {
             this.observers_[eventName] = observers.filter((observer)=>{
-                return observer.handler !== handler;
+                return observer.key !== key;
             });
         }
         return this;
@@ -155,11 +160,15 @@ class Emitter {
             observer.handler(event);
         });
     }
-    constructor(){
-        this.observers_ = {};
-    }
 }
 class ComplexValue {
+    constructor(initialValue, config){
+        var _a;
+        this.constraint_ = config === null || config === void 0 ? void 0 : config.constraint;
+        this.equals_ = (_a = config === null || config === void 0 ? void 0 : config.equals) !== null && _a !== void 0 ? _a : (v1, v2)=>v1 === v2;
+        this.emitter = new Emitter();
+        this.rawValue_ = initialValue;
+    }
     get constraint() {
         return this.constraint_;
     }
@@ -194,15 +203,12 @@ class ComplexValue {
             sender: this
         });
     }
-    constructor(initialValue, config){
-        var _a;
-        this.constraint_ = config === null || config === void 0 ? void 0 : config.constraint;
-        this.equals_ = (_a = config === null || config === void 0 ? void 0 : config.equals) !== null && _a !== void 0 ? _a : (v1, v2)=>v1 === v2;
-        this.emitter = new Emitter();
-        this.rawValue_ = initialValue;
-    }
 }
 class PrimitiveValue {
+    constructor(initialValue){
+        this.emitter = new Emitter();
+        this.value_ = initialValue;
+    }
     get rawValue() {
         return this.value_;
     }
@@ -232,12 +238,16 @@ class PrimitiveValue {
             sender: this
         });
     }
-    constructor(initialValue){
-        this.emitter = new Emitter();
-        this.value_ = initialValue;
-    }
 }
 class ReadonlyPrimitiveValue {
+    constructor(value){
+        this.emitter = new Emitter();
+        this.onValueBeforeChange_ = this.onValueBeforeChange_.bind(this);
+        this.onValueChange_ = this.onValueChange_.bind(this);
+        this.value_ = value;
+        this.value_.emitter.on('beforechange', this.onValueBeforeChange_);
+        this.value_.emitter.on('change', this.onValueChange_);
+    }
     get rawValue() {
         return this.value_.rawValue;
     }
@@ -250,14 +260,6 @@ class ReadonlyPrimitiveValue {
         this.emitter.emit('change', Object.assign(Object.assign({}, ev), {
             sender: this
         }));
-    }
-    constructor(value){
-        this.emitter = new Emitter();
-        this.onValueBeforeChange_ = this.onValueBeforeChange_.bind(this);
-        this.onValueChange_ = this.onValueChange_.bind(this);
-        this.value_ = value;
-        this.value_.emitter.on('beforechange', this.onValueBeforeChange_);
-        this.value_.emitter.on('change', this.onValueChange_);
     }
 }
 function createValue(initialValue, config) {
@@ -277,6 +279,19 @@ function createReadonlyValue(value) {
     ];
 }
 class ValueMap {
+    constructor(valueMap){
+        this.emitter = new Emitter();
+        this.valMap_ = valueMap;
+        for(const key in this.valMap_){
+            const v = this.valMap_[key];
+            v.emitter.on('change', ()=>{
+                this.emitter.emit('change', {
+                    key: key,
+                    sender: this
+                });
+            });
+        }
+    }
     static createCore(initialValue) {
         const keys = Object.keys(initialValue);
         return keys.reduce((o, key)=>{
@@ -298,34 +313,27 @@ class ValueMap {
     value(key) {
         return this.valMap_[key];
     }
-    constructor(valueMap){
-        this.emitter = new Emitter();
-        this.valMap_ = valueMap;
-        for(const key in this.valMap_){
-            const v = this.valMap_[key];
-            v.emitter.on('change', ()=>{
-                this.emitter.emit('change', {
-                    key: key,
-                    sender: this
-                });
-            });
-        }
-    }
 }
 class DefiniteRangeConstraint {
-    constrain(value) {
-        const max = this.values.get('max');
-        const min = this.values.get('min');
-        return Math.min(Math.max(value, min), max);
-    }
     constructor(config){
         this.values = ValueMap.fromObject({
             max: config.max,
             min: config.min
         });
     }
+    constrain(value) {
+        const max = this.values.get('max');
+        const min = this.values.get('min');
+        return Math.min(Math.max(value, min), max);
+    }
 }
 class RangeConstraint {
+    constructor(config){
+        this.values = ValueMap.fromObject({
+            max: config.max,
+            min: config.min
+        });
+    }
     constrain(value) {
         const max = this.values.get('max');
         const min = this.values.get('min');
@@ -338,33 +346,27 @@ class RangeConstraint {
         }
         return result;
     }
-    constructor(config){
-        this.values = ValueMap.fromObject({
-            max: config.max,
-            min: config.min
-        });
-    }
 }
 class StepConstraint {
+    constructor(step, origin = 0){
+        this.step = step;
+        this.origin = origin;
+    }
     constrain(value) {
         const o = this.origin % this.step;
         const r = Math.round((value - o) / this.step);
         return o + r * this.step;
     }
-    constructor(step, origin = 0){
-        this.step = step;
-        this.origin = origin;
-    }
 }
 class NumberLiteralNode {
+    constructor(text){
+        this.text = text;
+    }
     evaluate() {
         return Number(this.text);
     }
     toString() {
         return this.text;
-    }
-    constructor(text){
-        this.text = text;
     }
 }
 const BINARY_OPERATION_MAP = {
@@ -382,6 +384,11 @@ const BINARY_OPERATION_MAP = {
     '|': (v1, v2)=>v1 | v2
 };
 class BinaryOperationNode {
+    constructor(operator, left, right){
+        this.left = left;
+        this.operator = operator;
+        this.right = right;
+    }
     evaluate() {
         const op = BINARY_OPERATION_MAP[this.operator];
         if (!op) {
@@ -398,11 +405,6 @@ class BinaryOperationNode {
             ')'
         ].join(' ');
     }
-    constructor(operator, left, right){
-        this.left = left;
-        this.operator = operator;
-        this.right = right;
-    }
 }
 const UNARY_OPERATION_MAP = {
     '+': (v)=>v,
@@ -410,6 +412,10 @@ const UNARY_OPERATION_MAP = {
     '~': (v)=>~v
 };
 class UnaryOperationNode {
+    constructor(operator, expr){
+        this.operator = operator;
+        this.expression = expr;
+    }
     evaluate() {
         const op = UNARY_OPERATION_MAP[this.operator];
         if (!op) {
@@ -424,10 +430,6 @@ class UnaryOperationNode {
             this.expression.toString(),
             ')'
         ].join(' ');
-    }
-    constructor(operator, expr){
-        this.operator = operator;
-        this.expression = expr;
     }
 }
 function combineReader(parsers) {
@@ -836,6 +838,9 @@ function createPointAxis(config) {
     };
 }
 class BladeApi {
+    constructor(controller){
+        this.controller = controller;
+    }
     get element() {
         return this.controller.view.element;
     }
@@ -859,9 +864,6 @@ class BladeApi {
     }
     exportState() {
         return this.controller.exportState();
-    }
-    constructor(controller){
-        this.controller = controller;
     }
 }
 class TpEvent {
@@ -888,7 +890,19 @@ class TpTabSelectEvent extends TpEvent {
         this.index = index;
     }
 }
+class TpMouseEvent extends TpEvent {
+    constructor(target, nativeEvent){
+        super(target);
+        this.native = nativeEvent;
+    }
+}
 class BindingApi extends BladeApi {
+    constructor(controller){
+        super(controller);
+        this.onValueChange_ = this.onValueChange_.bind(this);
+        this.emitter_ = new Emitter();
+        this.controller.value.emitter.on('change', this.onValueChange_);
+    }
     get label() {
         return this.controller.labelController.props.get('label');
     }
@@ -908,7 +922,13 @@ class BindingApi extends BladeApi {
         const bh = handler.bind(this);
         this.emitter_.on(eventName, (ev)=>{
             bh(ev);
+        }, {
+            key: handler
         });
+        return this;
+    }
+    off(eventName, handler) {
+        this.emitter_.off(eventName, handler);
         return this;
     }
     refresh() {
@@ -918,14 +938,17 @@ class BindingApi extends BladeApi {
         const value = this.controller.value;
         this.emitter_.emit('change', new TpChangeEvent(this, forceCast(value.binding.target.read()), ev.options.last));
     }
-    constructor(controller){
-        super(controller);
-        this.onValueChange_ = this.onValueChange_.bind(this);
-        this.emitter_ = new Emitter();
-        this.controller.value.emitter.on('change', this.onValueChange_);
-    }
 }
 class InputBindingValue {
+    constructor(value, binding){
+        this.onValueBeforeChange_ = this.onValueBeforeChange_.bind(this);
+        this.onValueChange_ = this.onValueChange_.bind(this);
+        this.binding = binding;
+        this.value_ = value;
+        this.value_.emitter.on('beforechange', this.onValueBeforeChange_);
+        this.value_.emitter.on('change', this.onValueChange_);
+        this.emitter = new Emitter();
+    }
     get rawValue() {
         return this.value_.rawValue;
     }
@@ -951,15 +974,6 @@ class InputBindingValue {
         this.emitter.emit('change', Object.assign(Object.assign({}, ev), {
             sender: this
         }));
-    }
-    constructor(value, binding){
-        this.onValueBeforeChange_ = this.onValueBeforeChange_.bind(this);
-        this.onValueChange_ = this.onValueChange_.bind(this);
-        this.binding = binding;
-        this.value_ = value;
-        this.value_.emitter.on('beforechange', this.onValueBeforeChange_);
-        this.value_.emitter.on('change', this.onValueChange_);
-        this.emitter = new Emitter();
     }
 }
 function isInputBindingValue(v) {
@@ -1210,6 +1224,16 @@ class LabelView {
     }
 }
 class LabelController {
+    constructor(doc, config){
+        this.props = config.props;
+        this.valueController = config.valueController;
+        this.viewProps = config.valueController.viewProps;
+        this.view = new LabelView(doc, {
+            props: config.props,
+            viewProps: this.viewProps
+        });
+        this.view.valueElement.appendChild(this.valueController.view.element);
+    }
     importProps(state) {
         return importBladeState(state, null, (p)=>({
                 label: p.optional.string
@@ -1222,16 +1246,6 @@ class LabelController {
         return exportBladeState(null, {
             label: this.props.get('label')
         });
-    }
-    constructor(doc, config){
-        this.props = config.props;
-        this.valueController = config.valueController;
-        this.viewProps = config.valueController.viewProps;
-        this.view = new LabelView(doc, {
-            props: config.props,
-            viewProps: this.viewProps
-        });
-        this.view.valueElement.appendChild(this.valueController.view.element);
     }
 }
 function getAllBladePositions() {
@@ -1250,6 +1264,24 @@ const POS_TO_CLASS_NAME_MAP = {
     verylast: 'vlst'
 };
 class BladeController {
+    constructor(config){
+        this.parent_ = null;
+        this.blade = config.blade;
+        this.view = config.view;
+        this.viewProps = config.viewProps;
+        const elem = this.view.element;
+        this.blade.value('positions').emitter.on('change', ()=>{
+            getAllBladePositions().forEach((pos)=>{
+                elem.classList.remove(cn$q(undefined, POS_TO_CLASS_NAME_MAP[pos]));
+            });
+            this.blade.get('positions').forEach((pos)=>{
+                elem.classList.add(cn$q(undefined, POS_TO_CLASS_NAME_MAP[pos]));
+            });
+        });
+        this.viewProps.handleDispose(()=>{
+            removeElement(elem);
+        });
+    }
     get parent() {
         return this.parent_;
     }
@@ -1269,45 +1301,8 @@ class BladeController {
     exportState() {
         return exportBladeState(null, Object.assign({}, this.viewProps.exportState()));
     }
-    constructor(config){
-        this.parent_ = null;
-        this.blade = config.blade;
-        this.view = config.view;
-        this.viewProps = config.viewProps;
-        const elem = this.view.element;
-        this.blade.value('positions').emitter.on('change', ()=>{
-            getAllBladePositions().forEach((pos)=>{
-                elem.classList.remove(cn$q(undefined, POS_TO_CLASS_NAME_MAP[pos]));
-            });
-            this.blade.get('positions').forEach((pos)=>{
-                elem.classList.add(cn$q(undefined, POS_TO_CLASS_NAME_MAP[pos]));
-            });
-        });
-        this.viewProps.handleDispose(()=>{
-            removeElement(elem);
-        });
-    }
 }
 class LabeledValueBladeController extends BladeController {
-    importState(state) {
-        return importBladeState(state, (s)=>{
-            var _a, _b, _c;
-            return super.importState(s) && this.labelController.importProps(s) && ((_c = (_b = (_a = this.valueController).importProps) === null || _b === void 0 ? void 0 : _b.call(_a, state)) !== null && _c !== void 0 ? _c : true);
-        }, (p)=>({
-                value: p.optional.raw
-            }), (result)=>{
-            if (result.value) {
-                this.value.rawValue = result.value;
-            }
-            return true;
-        });
-    }
-    exportState() {
-        var _a, _b, _c;
-        return exportBladeState(()=>super.exportState(), Object.assign(Object.assign({
-            value: this.value.rawValue
-        }, this.labelController.exportProps()), (_c = (_b = (_a = this.valueController).exportProps) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : {}));
-    }
     constructor(doc, config){
         if (config.value !== config.valueController.value) {
             throw TpError.shouldNeverHappen();
@@ -1330,6 +1325,25 @@ class LabeledValueBladeController extends BladeController {
         this.valueController = config.valueController;
         this.view.valueElement.appendChild(this.valueController.view.element);
     }
+    importState(state) {
+        return importBladeState(state, (s)=>{
+            var _a, _b, _c;
+            return super.importState(s) && this.labelController.importProps(s) && ((_c = (_b = (_a = this.valueController).importProps) === null || _b === void 0 ? void 0 : _b.call(_a, state)) !== null && _c !== void 0 ? _c : true);
+        }, (p)=>({
+                value: p.optional.raw
+            }), (result)=>{
+            if (result.value) {
+                this.value.rawValue = result.value;
+            }
+            return true;
+        });
+    }
+    exportState() {
+        var _a, _b, _c;
+        return exportBladeState(()=>super.exportState(), Object.assign(Object.assign({
+            value: this.value.rawValue
+        }, this.labelController.exportProps()), (_c = (_b = (_a = this.valueController).exportProps) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : {}));
+    }
 }
 function excludeValue(state) {
     const result = Object.assign({}, state);
@@ -1337,6 +1351,10 @@ function excludeValue(state) {
     return result;
 }
 class BindingController extends LabeledValueBladeController {
+    constructor(doc, config){
+        super(doc, config);
+        this.tag = config.tag;
+    }
     importState(state) {
         return importBladeState(state, (_s)=>super.importState(excludeValue(state)), (p)=>({
                 tag: p.optional.string
@@ -1353,10 +1371,6 @@ class BindingController extends LabeledValueBladeController {
             },
             tag: this.tag
         });
-    }
-    constructor(doc, config){
-        super(doc, config);
-        this.tag = config.tag;
     }
 }
 function isBindingController(bc) {
@@ -1405,6 +1419,19 @@ function createPushedBuffer(buffer, newValue) {
     return newBuffer;
 }
 class MonitorBindingValue {
+    constructor(config){
+        this.emitter = new Emitter();
+        this.onTick_ = this.onTick_.bind(this);
+        this.onValueBeforeChange_ = this.onValueBeforeChange_.bind(this);
+        this.onValueChange_ = this.onValueChange_.bind(this);
+        this.binding = config.binding;
+        this.value_ = createValue(initializeBuffer(config.bufferSize));
+        this.value_.emitter.on('beforechange', this.onValueBeforeChange_);
+        this.value_.emitter.on('change', this.onValueChange_);
+        this.ticker = config.ticker;
+        this.ticker.emitter.on('tick', this.onTick_);
+        this.fetch();
+    }
     get rawValue() {
         return this.value_.rawValue;
     }
@@ -1429,19 +1456,6 @@ class MonitorBindingValue {
         this.emitter.emit('change', Object.assign(Object.assign({}, ev), {
             sender: this
         }));
-    }
-    constructor(config){
-        this.emitter = new Emitter();
-        this.onTick_ = this.onTick_.bind(this);
-        this.onValueBeforeChange_ = this.onValueBeforeChange_.bind(this);
-        this.onValueChange_ = this.onValueChange_.bind(this);
-        this.binding = config.binding;
-        this.value_ = createValue(initializeBuffer(config.bufferSize));
-        this.value_.emitter.on('beforechange', this.onValueBeforeChange_);
-        this.value_.emitter.on('change', this.onValueChange_);
-        this.ticker = config.ticker;
-        this.ticker.emitter.on('tick', this.onTick_);
-        this.fetch();
     }
 }
 function isMonitorBindingValue(v) {
@@ -1480,9 +1494,14 @@ class ButtonApi extends BladeApi {
     on(eventName, handler) {
         const bh = handler.bind(this);
         const emitter = this.controller.buttonController.emitter;
-        emitter.on(eventName, ()=>{
-            bh(new TpEvent(this));
+        emitter.on(eventName, (ev)=>{
+            bh(new TpMouseEvent(this, ev.nativeEvent));
         });
+        return this;
+    }
+    off(eventName, handler) {
+        const emitter = this.controller.buttonController.emitter;
+        emitter.off(eventName, handler);
         return this;
     }
 }
@@ -1521,6 +1540,17 @@ class ButtonView {
     }
 }
 class ButtonController {
+    constructor(doc, config){
+        this.emitter = new Emitter();
+        this.onClick_ = this.onClick_.bind(this);
+        this.props = config.props;
+        this.viewProps = config.viewProps;
+        this.view = new ButtonView(doc, {
+            props: this.props,
+            viewProps: this.viewProps
+        });
+        this.view.buttonElement.addEventListener('click', this.onClick_);
+    }
     importProps(state) {
         return importBladeState(state, null, (p)=>({
                 title: p.optional.string
@@ -1534,30 +1564,14 @@ class ButtonController {
             title: this.props.get('title')
         });
     }
-    onClick_() {
+    onClick_(ev) {
         this.emitter.emit('click', {
+            nativeEvent: ev,
             sender: this
         });
     }
-    constructor(doc, config){
-        this.emitter = new Emitter();
-        this.onClick_ = this.onClick_.bind(this);
-        this.props = config.props;
-        this.viewProps = config.viewProps;
-        this.view = new ButtonView(doc, {
-            props: this.props,
-            viewProps: this.viewProps
-        });
-        this.view.buttonElement.addEventListener('click', this.onClick_);
-    }
 }
 class ButtonBladeController extends BladeController {
-    importState(state) {
-        return importBladeState(state, (s)=>super.importState(s) && this.buttonController.importProps(s) && this.labelController.importProps(s), ()=>({}), ()=>true);
-    }
-    exportState() {
-        return exportBladeState(()=>super.exportState(), Object.assign(Object.assign({}, this.buttonController.exportProps()), this.labelController.exportProps()));
-    }
     constructor(doc, config){
         const bc = new ButtonController(doc, {
             props: config.buttonProps,
@@ -1576,8 +1590,22 @@ class ButtonBladeController extends BladeController {
         this.buttonController = bc;
         this.labelController = lc;
     }
+    importState(state) {
+        return importBladeState(state, (s)=>super.importState(s) && this.buttonController.importProps(s) && this.labelController.importProps(s), ()=>({}), ()=>true);
+    }
+    exportState() {
+        return exportBladeState(()=>super.exportState(), Object.assign(Object.assign({}, this.buttonController.exportProps()), this.labelController.exportProps()));
+    }
 }
 class Semver {
+    constructor(text){
+        const [core, prerelease] = text.split('-');
+        const coreComps = core.split('.');
+        this.major = parseInt(coreComps[0], 10);
+        this.minor = parseInt(coreComps[1], 10);
+        this.patch = parseInt(coreComps[2], 10);
+        this.prerelease = prerelease !== null && prerelease !== void 0 ? prerelease : null;
+    }
     toString() {
         const core = [
             this.major,
@@ -1589,16 +1617,8 @@ class Semver {
             this.prerelease
         ].join('-') : core;
     }
-    constructor(text){
-        const [core, prerelease] = text.split('-');
-        const coreComps = core.split('.');
-        this.major = parseInt(coreComps[0], 10);
-        this.minor = parseInt(coreComps[1], 10);
-        this.patch = parseInt(coreComps[2], 10);
-        this.prerelease = prerelease !== null && prerelease !== void 0 ? prerelease : null;
-    }
 }
-const VERSION$1 = new Semver('2.0.1');
+const VERSION$1 = new Semver('2.0.4');
 function createPlugin(plugin) {
     return Object.assign({
         core: VERSION$1
@@ -1664,6 +1684,14 @@ function createBindingTarget(obj, key) {
     return new BindingTarget(obj, key);
 }
 class RackApi {
+    constructor(controller, pool){
+        this.onRackValueChange_ = this.onRackValueChange_.bind(this);
+        this.controller_ = controller;
+        this.emitter_ = new Emitter();
+        this.pool_ = pool;
+        const rack = this.controller_.rack;
+        rack.emitter.on('valuechange', this.onRackValueChange_);
+    }
     get children() {
         return this.controller_.rack.children.map((bc)=>this.pool_.createApi(bc));
     }
@@ -1701,7 +1729,13 @@ class RackApi {
         const bh = handler.bind(this);
         this.emitter_.on(eventName, (ev)=>{
             bh(ev);
+        }, {
+            key: handler
         });
+        return this;
+    }
+    off(eventName, handler) {
+        this.emitter_.off(eventName, handler);
         return this;
     }
     refresh() {
@@ -1717,25 +1751,25 @@ class RackApi {
         const binding = isBindingValue(bc.value) ? bc.value.binding : null;
         this.emitter_.emit('change', new TpChangeEvent(api, binding ? binding.target.read() : bc.value.rawValue, ev.options.last));
     }
-    constructor(controller, pool){
-        this.onRackValueChange_ = this.onRackValueChange_.bind(this);
-        this.controller_ = controller;
-        this.emitter_ = new Emitter();
-        this.pool_ = pool;
-        const rack = this.controller_.rack;
-        rack.emitter.on('valuechange', this.onRackValueChange_);
-    }
 }
 class ContainerBladeApi extends BladeApi {
-    refresh() {
-        this.rackApi_.refresh();
-    }
     constructor(controller, pool){
         super(controller);
         this.rackApi_ = new RackApi(controller.rackController, pool);
     }
+    refresh() {
+        this.rackApi_.refresh();
+    }
 }
 class ContainerBladeController extends BladeController {
+    constructor(config){
+        super({
+            blade: config.blade,
+            view: config.view,
+            viewProps: config.rackController.viewProps
+        });
+        this.rackController = config.rackController;
+    }
     importState(state) {
         return importBladeState(state, (s)=>super.importState(s), (p)=>({
                 children: p.required.array(p.required.raw)
@@ -1750,19 +1784,19 @@ class ContainerBladeController extends BladeController {
             children: this.rackController.rack.children.map((c)=>c.exportState())
         });
     }
-    constructor(config){
-        super({
-            blade: config.blade,
-            view: config.view,
-            viewProps: config.rackController.viewProps
-        });
-        this.rackController = config.rackController;
-    }
 }
 function isContainerBladeController(bc) {
     return 'rackController' in bc;
 }
 class NestedOrderedSet {
+    constructor(extract){
+        this.emitter = new Emitter();
+        this.items_ = [];
+        this.cache_ = new Set();
+        this.onSubListAdd_ = this.onSubListAdd_.bind(this);
+        this.onSubListRemove_ = this.onSubListRemove_.bind(this);
+        this.extract_ = extract;
+    }
     get items() {
         return this.items_;
     }
@@ -1842,14 +1876,6 @@ class NestedOrderedSet {
             target: ev.target
         });
     }
-    constructor(extract){
-        this.emitter = new Emitter();
-        this.items_ = [];
-        this.cache_ = new Set();
-        this.onSubListAdd_ = this.onSubListAdd_.bind(this);
-        this.onSubListRemove_ = this.onSubListRemove_.bind(this);
-        this.extract_ = extract;
-    }
 }
 function findValueBladeController(bcs, v) {
     for(let i = 0; i < bcs.length; i++){
@@ -1864,6 +1890,25 @@ function findSubBladeControllerSet(bc) {
     return isContainerBladeController(bc) ? bc.rackController.rack['bcSet_'] : null;
 }
 class Rack {
+    constructor(config){
+        var _a, _b;
+        this.emitter = new Emitter();
+        this.onBladePositionsChange_ = this.onBladePositionsChange_.bind(this);
+        this.onSetAdd_ = this.onSetAdd_.bind(this);
+        this.onSetRemove_ = this.onSetRemove_.bind(this);
+        this.onChildDispose_ = this.onChildDispose_.bind(this);
+        this.onChildPositionsChange_ = this.onChildPositionsChange_.bind(this);
+        this.onChildValueChange_ = this.onChildValueChange_.bind(this);
+        this.onChildViewPropsChange_ = this.onChildViewPropsChange_.bind(this);
+        this.onRackLayout_ = this.onRackLayout_.bind(this);
+        this.onRackValueChange_ = this.onRackValueChange_.bind(this);
+        this.blade_ = (_a = config.blade) !== null && _a !== void 0 ? _a : null;
+        (_b = this.blade_) === null || _b === void 0 ? void 0 : _b.value('positions').emitter.on('change', this.onBladePositionsChange_);
+        this.viewProps = config.viewProps;
+        this.bcSet_ = new NestedOrderedSet(findSubBladeControllerSet);
+        this.bcSet_.emitter.on('add', this.onSetAdd_);
+        this.bcSet_.emitter.on('remove', this.onSetRemove_);
+    }
     get children() {
         return this.bcSet_.items;
     }
@@ -1998,39 +2043,8 @@ class Rack {
     onBladePositionsChange_() {
         this.updatePositions_();
     }
-    constructor(config){
-        var _a, _b;
-        this.emitter = new Emitter();
-        this.onBladePositionsChange_ = this.onBladePositionsChange_.bind(this);
-        this.onSetAdd_ = this.onSetAdd_.bind(this);
-        this.onSetRemove_ = this.onSetRemove_.bind(this);
-        this.onChildDispose_ = this.onChildDispose_.bind(this);
-        this.onChildPositionsChange_ = this.onChildPositionsChange_.bind(this);
-        this.onChildValueChange_ = this.onChildValueChange_.bind(this);
-        this.onChildViewPropsChange_ = this.onChildViewPropsChange_.bind(this);
-        this.onRackLayout_ = this.onRackLayout_.bind(this);
-        this.onRackValueChange_ = this.onRackValueChange_.bind(this);
-        this.blade_ = (_a = config.blade) !== null && _a !== void 0 ? _a : null;
-        (_b = this.blade_) === null || _b === void 0 ? void 0 : _b.value('positions').emitter.on('change', this.onBladePositionsChange_);
-        this.viewProps = config.viewProps;
-        this.bcSet_ = new NestedOrderedSet(findSubBladeControllerSet);
-        this.bcSet_.emitter.on('add', this.onSetAdd_);
-        this.bcSet_.emitter.on('remove', this.onSetRemove_);
-    }
 }
 class RackController {
-    onRackAdd_(ev) {
-        if (!ev.root) {
-            return;
-        }
-        insertElementAt(this.element, ev.bladeController.view.element, ev.index);
-    }
-    onRackRemove_(ev) {
-        if (!ev.root) {
-            return;
-        }
-        removeElement(ev.bladeController.view.element);
-    }
     constructor(config){
         this.onRackAdd_ = this.onRackAdd_.bind(this);
         this.onRackRemove_ = this.onRackRemove_.bind(this);
@@ -2050,6 +2064,18 @@ class RackController {
             }
         });
     }
+    onRackAdd_(ev) {
+        if (!ev.root) {
+            return;
+        }
+        insertElementAt(this.element, ev.bladeController.view.element, ev.index);
+    }
+    onRackRemove_(ev) {
+        if (!ev.root) {
+            return;
+        }
+        removeElement(ev.bladeController.view.element);
+    }
 }
 function createBlade() {
     return new ValueMap({
@@ -2059,6 +2085,9 @@ function createBlade() {
     });
 }
 class Foldable extends ValueMap {
+    constructor(valueMap){
+        super(valueMap);
+    }
     static create(expanded) {
         const coreObj = {
             completed: true,
@@ -2101,9 +2130,6 @@ class Foldable extends ValueMap {
         this.set('expandedHeight', null);
         this.set('completed', true);
     }
-    constructor(valueMap){
-        super(valueMap);
-    }
 }
 function computeExpandedFolderHeight(folder, containerElement) {
     let height = 0;
@@ -2144,6 +2170,16 @@ function bindFoldable(foldable, elem) {
     });
 }
 class FolderApi extends ContainerBladeApi {
+    constructor(controller, pool){
+        super(controller, pool);
+        this.emitter_ = new Emitter();
+        this.controller.foldable.value('expanded').emitter.on('change', (ev)=>{
+            this.emitter_.emit('fold', new TpFoldEvent(this, ev.sender.rawValue));
+        });
+        this.rackApi_.on('change', (ev)=>{
+            this.emitter_.emit('change', ev);
+        });
+    }
     get expanded() {
         return this.controller.foldable.get('expanded');
     }
@@ -2184,18 +2220,14 @@ class FolderApi extends ContainerBladeApi {
         const bh = handler.bind(this);
         this.emitter_.on(eventName, (ev)=>{
             bh(ev);
+        }, {
+            key: handler
         });
         return this;
     }
-    constructor(controller, pool){
-        super(controller, pool);
-        this.emitter_ = new Emitter();
-        this.controller.foldable.value('expanded').emitter.on('change', (ev)=>{
-            this.emitter_.emit('fold', new TpFoldEvent(this, ev.sender.rawValue));
-        });
-        this.rackApi_.on('change', (ev)=>{
-            this.emitter_.emit('change', ev);
-        });
+    off(eventName, handler) {
+        this.emitter_.off(eventName, handler);
+        return this;
     }
 }
 const bladeContainerClassName = ClassName('cnt');
@@ -2239,28 +2271,6 @@ class FolderView {
     }
 }
 class FolderController extends ContainerBladeController {
-    get document() {
-        return this.view.element.ownerDocument;
-    }
-    importState(state) {
-        return importBladeState(state, (s)=>super.importState(s), (p)=>({
-                expanded: p.required.boolean,
-                title: p.optional.string
-            }), (result)=>{
-            this.foldable.set('expanded', result.expanded);
-            this.props.set('title', result.title);
-            return true;
-        });
-    }
-    exportState() {
-        return exportBladeState(()=>super.exportState(), {
-            expanded: this.foldable.get('expanded'),
-            title: this.props.get('title')
-        });
-    }
-    onTitleClick_() {
-        this.foldable.set('expanded', !this.foldable.get('expanded'));
-    }
     constructor(doc, config){
         var _a;
         const foldable = Foldable.create((_a = config.expanded) !== null && _a !== void 0 ? _a : true);
@@ -2290,6 +2300,28 @@ class FolderController extends ContainerBladeController {
             this.foldable.cleanUpTransition();
         });
         this.view.buttonElement.addEventListener('click', this.onTitleClick_);
+    }
+    get document() {
+        return this.view.element.ownerDocument;
+    }
+    importState(state) {
+        return importBladeState(state, (s)=>super.importState(s), (p)=>({
+                expanded: p.required.boolean,
+                title: p.optional.string
+            }), (result)=>{
+            this.foldable.set('expanded', result.expanded);
+            this.props.set('title', result.title);
+            return true;
+        });
+    }
+    exportState() {
+        return exportBladeState(()=>super.exportState(), {
+            expanded: this.foldable.get('expanded'),
+            title: this.props.get('title')
+        });
+    }
+    onTitleClick_() {
+        this.foldable.set('expanded', !this.foldable.get('expanded'));
     }
 }
 const FolderBladePlugin = createPlugin({
@@ -2327,6 +2359,17 @@ function valueToModifier(elem, modifier) {
     return valueToClassName(elem, cn$o(undefined, modifier));
 }
 class ViewProps extends ValueMap {
+    constructor(valueMap){
+        var _a;
+        super(valueMap);
+        this.onDisabledChange_ = this.onDisabledChange_.bind(this);
+        this.onParentChange_ = this.onParentChange_.bind(this);
+        this.onParentGlobalDisabledChange_ = this.onParentGlobalDisabledChange_.bind(this);
+        [this.globalDisabled_, this.setGlobalDisabled_] = createReadonlyValue(createValue(this.getGlobalDisabled_()));
+        this.value('disabled').emitter.on('change', this.onDisabledChange_);
+        this.value('parent').emitter.on('change', this.onParentChange_);
+        (_a = this.get('parent')) === null || _a === void 0 ? void 0 : _a.globalDisabled.emitter.on('change', this.onParentGlobalDisabledChange_);
+    }
     static create(opt_initialValue) {
         var _a, _b, _c;
         const initialValue = opt_initialValue !== null && opt_initialValue !== void 0 ? opt_initialValue : {};
@@ -2392,17 +2435,6 @@ class ViewProps extends ValueMap {
         (_a = this.get('parent')) === null || _a === void 0 ? void 0 : _a.globalDisabled.emitter.on('change', this.onParentGlobalDisabledChange_);
         this.updateGlobalDisabled_();
     }
-    constructor(valueMap){
-        var _a;
-        super(valueMap);
-        this.onDisabledChange_ = this.onDisabledChange_.bind(this);
-        this.onParentChange_ = this.onParentChange_.bind(this);
-        this.onParentGlobalDisabledChange_ = this.onParentGlobalDisabledChange_.bind(this);
-        [this.globalDisabled_, this.setGlobalDisabled_] = createReadonlyValue(createValue(this.getGlobalDisabled_()));
-        this.value('disabled').emitter.on('change', this.onDisabledChange_);
-        this.value('parent').emitter.on('change', this.onParentChange_);
-        (_a = this.get('parent')) === null || _a === void 0 ? void 0 : _a.globalDisabled.emitter.on('change', this.onParentGlobalDisabledChange_);
-    }
 }
 const cn$n = ClassName('tbp');
 class TabPageView {
@@ -2442,11 +2474,6 @@ class TabItemView {
     }
 }
 class TabItemController {
-    onClick_() {
-        this.emitter.emit('click', {
-            sender: this
-        });
-    }
     constructor(doc, config){
         this.emitter = new Emitter();
         this.onClick_ = this.onClick_.bind(this);
@@ -2458,30 +2485,13 @@ class TabItemController {
         });
         this.view.buttonElement.addEventListener('click', this.onClick_);
     }
+    onClick_() {
+        this.emitter.emit('click', {
+            sender: this
+        });
+    }
 }
 class TabPageController extends ContainerBladeController {
-    get itemController() {
-        return this.ic_;
-    }
-    importState(state) {
-        return importBladeState(state, (s)=>super.importState(s), (p)=>({
-                selected: p.required.boolean,
-                title: p.required.string
-            }), (result)=>{
-            this.ic_.props.set('selected', result.selected);
-            this.ic_.props.set('title', result.title);
-            return true;
-        });
-    }
-    exportState() {
-        return exportBladeState(()=>super.exportState(), {
-            selected: this.ic_.props.get('selected'),
-            title: this.ic_.props.get('title')
-        });
-    }
-    onItemClick_() {
-        this.props.set('selected', true);
-    }
     constructor(doc, config){
         const view = new TabPageView(doc, {
             viewProps: config.viewProps
@@ -2506,8 +2516,40 @@ class TabPageController extends ContainerBladeController {
             this.viewProps.set('hidden', !selected);
         });
     }
+    get itemController() {
+        return this.ic_;
+    }
+    importState(state) {
+        return importBladeState(state, (s)=>super.importState(s), (p)=>({
+                selected: p.required.boolean,
+                title: p.required.string
+            }), (result)=>{
+            this.ic_.props.set('selected', result.selected);
+            this.ic_.props.set('title', result.title);
+            return true;
+        });
+    }
+    exportState() {
+        return exportBladeState(()=>super.exportState(), {
+            selected: this.ic_.props.get('selected'),
+            title: this.ic_.props.get('title')
+        });
+    }
+    onItemClick_() {
+        this.props.set('selected', true);
+    }
 }
 class TabApi extends ContainerBladeApi {
+    constructor(controller, pool){
+        super(controller, pool);
+        this.emitter_ = new Emitter();
+        this.onSelect_ = this.onSelect_.bind(this);
+        this.pool_ = pool;
+        this.rackApi_.on('change', (ev)=>{
+            this.emitter_.emit('change', ev);
+        });
+        this.controller.tab.selectedIndex.emitter.on('change', this.onSelect_);
+    }
     get pages() {
         return this.rackApi_.children;
     }
@@ -2534,21 +2576,17 @@ class TabApi extends ContainerBladeApi {
         const bh = handler.bind(this);
         this.emitter_.on(eventName, (ev)=>{
             bh(ev);
+        }, {
+            key: handler
         });
+        return this;
+    }
+    off(eventName, handler) {
+        this.emitter_.off(eventName, handler);
         return this;
     }
     onSelect_(ev) {
         this.emitter_.emit('select', new TpTabSelectEvent(this, ev.rawValue));
-    }
-    constructor(controller, pool){
-        super(controller, pool);
-        this.emitter_ = new Emitter();
-        this.onSelect_ = this.onSelect_.bind(this);
-        this.pool_ = pool;
-        this.rackApi_.on('change', (ev)=>{
-            this.emitter_.emit('change', ev);
-        });
-        this.controller.tab.selectedIndex.emitter.on('change', this.onSelect_);
     }
 }
 class TabPageApi extends ContainerBladeApi {
@@ -2592,6 +2630,12 @@ class TabPageApi extends ContainerBladeApi {
 }
 const INDEX_NOT_SELECTED = -1;
 class Tab {
+    constructor(){
+        this.onItemSelectedChange_ = this.onItemSelectedChange_.bind(this);
+        this.empty = createValue(true);
+        this.selectedIndex = createValue(INDEX_NOT_SELECTED);
+        this.items_ = [];
+    }
     add(item, opt_index) {
         const index = opt_index !== null && opt_index !== void 0 ? opt_index : this.items_.length;
         this.items_.splice(index, 0, item);
@@ -2638,12 +2682,6 @@ class Tab {
             this.keepSelection_();
         }
     }
-    constructor(){
-        this.onItemSelectedChange_ = this.onItemSelectedChange_.bind(this);
-        this.empty = createValue(true);
-        this.selectedIndex = createValue(INDEX_NOT_SELECTED);
-        this.items_ = [];
-    }
 }
 const cn$l = ClassName('tab');
 class TabView {
@@ -2666,6 +2704,28 @@ class TabView {
     }
 }
 class TabController extends ContainerBladeController {
+    constructor(doc, config){
+        const tab = new Tab();
+        const view = new TabView(doc, {
+            empty: tab.empty,
+            viewProps: config.viewProps
+        });
+        super({
+            blade: config.blade,
+            rackController: new RackController({
+                blade: config.blade,
+                element: view.contentsElement,
+                viewProps: config.viewProps
+            }),
+            view: view
+        });
+        this.onRackAdd_ = this.onRackAdd_.bind(this);
+        this.onRackRemove_ = this.onRackRemove_.bind(this);
+        const rack = this.rackController.rack;
+        rack.emitter.on('add', this.onRackAdd_);
+        rack.emitter.on('remove', this.onRackRemove_);
+        this.tab = tab;
+    }
     add(pc, opt_index) {
         this.rackController.rack.add(pc, opt_index);
     }
@@ -2689,28 +2749,6 @@ class TabController extends ContainerBladeController {
         removeElement(pc.itemController.view.element);
         pc.itemController.viewProps.set('parent', null);
         this.tab.remove(pc.props.value('selected'));
-    }
-    constructor(doc, config){
-        const tab = new Tab();
-        const view = new TabView(doc, {
-            empty: tab.empty,
-            viewProps: config.viewProps
-        });
-        super({
-            blade: config.blade,
-            rackController: new RackController({
-                blade: config.blade,
-                element: view.contentsElement,
-                viewProps: config.viewProps
-            }),
-            view: view
-        });
-        this.onRackAdd_ = this.onRackAdd_.bind(this);
-        this.onRackRemove_ = this.onRackRemove_.bind(this);
-        const rack = this.rackController.rack;
-        rack.emitter.on('add', this.onRackAdd_);
-        rack.emitter.on('remove', this.onRackRemove_);
-        this.tab = tab;
     }
 }
 const TabBladePlugin = createPlugin({
@@ -2792,6 +2830,10 @@ class ListInputBindingApi extends BindingApi {
     }
 }
 class ManualTicker {
+    constructor(){
+        this.disabled = false;
+        this.emitter = new Emitter();
+    }
     dispose() {}
     tick() {
         if (this.disabled) {
@@ -2801,12 +2843,17 @@ class ManualTicker {
             sender: this
         });
     }
-    constructor(){
-        this.disabled = false;
-        this.emitter = new Emitter();
-    }
 }
 class IntervalTicker {
+    constructor(doc, interval){
+        this.disabled_ = false;
+        this.timerId_ = null;
+        this.onTick_ = this.onTick_.bind(this);
+        this.doc_ = doc;
+        this.emitter = new Emitter();
+        this.interval_ = interval;
+        this.setTimer_();
+    }
     get disabled() {
         return this.disabled_;
     }
@@ -2849,24 +2896,15 @@ class IntervalTicker {
             sender: this
         });
     }
-    constructor(doc, interval){
-        this.disabled_ = false;
-        this.timerId_ = null;
-        this.onTick_ = this.onTick_.bind(this);
-        this.doc_ = doc;
-        this.emitter = new Emitter();
-        this.interval_ = interval;
-        this.setTimer_();
-    }
 }
 class CompositeConstraint {
+    constructor(constraints){
+        this.constraints = constraints;
+    }
     constrain(value) {
         return this.constraints.reduce((result, c)=>{
             return c.constrain(result);
         }, value);
-    }
-    constructor(constraints){
-        this.constraints = constraints;
     }
 }
 function findConstraint(c, constraintClass) {
@@ -2887,6 +2925,11 @@ function findConstraint(c, constraintClass) {
     return null;
 }
 class ListConstraint {
+    constructor(options){
+        this.values = ValueMap.fromObject({
+            options: options
+        });
+    }
     constrain(value) {
         const opts = this.values.get('options');
         if (opts.length === 0) {
@@ -2896,11 +2939,6 @@ class ListConstraint {
             return item.value === value;
         }).length > 0;
         return matched ? value : opts[0].value;
-    }
-    constructor(options){
-        this.values = ValueMap.fromObject({
-            options: options
-        });
     }
 }
 function parseListOptions(value) {
@@ -2939,13 +2977,6 @@ function createListConstraint(options) {
 }
 const cn$k = ClassName('lst');
 class ListView {
-    update_() {
-        const values = this.props_.get('options').map((o)=>o.value);
-        this.selectElement.selectedIndex = values.indexOf(this.value_.rawValue);
-    }
-    onValueChange_() {
-        this.update_();
-    }
     constructor(doc, config){
         this.onValueChange_ = this.onValueChange_.bind(this);
         this.props_ = config.props;
@@ -2973,8 +3004,27 @@ class ListView {
             this.update_();
         });
     }
+    update_() {
+        const values = this.props_.get('options').map((o)=>o.value);
+        this.selectElement.selectedIndex = values.indexOf(this.value_.rawValue);
+    }
+    onValueChange_() {
+        this.update_();
+    }
 }
 class ListController {
+    constructor(doc, config){
+        this.onSelectChange_ = this.onSelectChange_.bind(this);
+        this.props = config.props;
+        this.value = config.value;
+        this.viewProps = config.viewProps;
+        this.view = new ListView(doc, {
+            props: this.props,
+            value: this.value,
+            viewProps: this.viewProps
+        });
+        this.view.selectElement.addEventListener('change', this.onSelectChange_);
+    }
     onSelectChange_(e) {
         const selectElem = forceCast(e.currentTarget);
         this.value.rawValue = this.props.get('options')[selectElem.selectedIndex].value;
@@ -2991,18 +3041,6 @@ class ListController {
         return exportBladeState(null, {
             options: this.props.get('options')
         });
-    }
-    constructor(doc, config){
-        this.onSelectChange_ = this.onSelectChange_.bind(this);
-        this.props = config.props;
-        this.value = config.value;
-        this.viewProps = config.viewProps;
-        this.view = new ListView(doc, {
-            props: this.props,
-            value: this.value,
-            viewProps: this.viewProps
-        });
-        this.view.selectElement.addEventListener('change', this.onSelectChange_);
     }
 }
 const cn$j = ClassName('pop');
@@ -3026,13 +3064,6 @@ class PopupController {
 }
 const cn$i = ClassName('txt');
 class TextView {
-    refresh() {
-        const formatter = this.props_.get('formatter');
-        this.inputElement.value = formatter(this.value_.rawValue);
-    }
-    onChange_() {
-        this.refresh();
-    }
     constructor(doc, config){
         this.onChange_ = this.onChange_.bind(this);
         this.element = doc.createElement('div');
@@ -3050,17 +3081,15 @@ class TextView {
         this.value_ = config.value;
         this.refresh();
     }
+    refresh() {
+        const formatter = this.props_.get('formatter');
+        this.inputElement.value = formatter(this.value_.rawValue);
+    }
+    onChange_() {
+        this.refresh();
+    }
 }
 class TextController {
-    onInputChange_(e) {
-        const inputElem = forceCast(e.currentTarget);
-        const value = inputElem.value;
-        const parsedValue = this.parser_(value);
-        if (!isEmpty(parsedValue)) {
-            this.value.rawValue = parsedValue;
-        }
-        this.view.refresh();
-    }
     constructor(doc, config){
         this.onInputChange_ = this.onInputChange_.bind(this);
         this.parser_ = config.parser;
@@ -3073,6 +3102,15 @@ class TextController {
             viewProps: this.viewProps
         });
         this.view.inputElement.addEventListener('change', this.onInputChange_);
+    }
+    onInputChange_(e) {
+        const inputElem = forceCast(e.currentTarget);
+        const value = inputElem.value;
+        const parsedValue = this.parser_(value);
+        if (!isEmpty(parsedValue)) {
+            this.value.rawValue = parsedValue;
+        }
+        this.view.refresh();
     }
 }
 function boolToString(value) {
@@ -3108,7 +3146,7 @@ function formatString(value) {
     return value;
 }
 function connectValues(param) {
-    let { primary , secondary , forward , backward  } = param;
+    let { primary, secondary, forward, backward } = param;
     let changing = false;
     function preventFeedback(callback) {
         if (changing) {
@@ -3179,6 +3217,25 @@ function computeOffset$1(ev, elem) {
     };
 }
 class PointerHandler {
+    constructor(element){
+        this.lastTouch_ = null;
+        this.onDocumentMouseMove_ = this.onDocumentMouseMove_.bind(this);
+        this.onDocumentMouseUp_ = this.onDocumentMouseUp_.bind(this);
+        this.onMouseDown_ = this.onMouseDown_.bind(this);
+        this.onTouchEnd_ = this.onTouchEnd_.bind(this);
+        this.onTouchMove_ = this.onTouchMove_.bind(this);
+        this.onTouchStart_ = this.onTouchStart_.bind(this);
+        this.elem_ = element;
+        this.emitter = new Emitter();
+        element.addEventListener('touchstart', this.onTouchStart_, {
+            passive: false
+        });
+        element.addEventListener('touchmove', this.onTouchMove_, {
+            passive: true
+        });
+        element.addEventListener('touchend', this.onTouchEnd_);
+        element.addEventListener('mousedown', this.onMouseDown_);
+    }
     computePosition_(offset) {
         const rect = this.elem_.getBoundingClientRect();
         return {
@@ -3268,53 +3325,9 @@ class PointerHandler {
             shiftKey: ev.shiftKey
         });
     }
-    constructor(element){
-        this.lastTouch_ = null;
-        this.onDocumentMouseMove_ = this.onDocumentMouseMove_.bind(this);
-        this.onDocumentMouseUp_ = this.onDocumentMouseUp_.bind(this);
-        this.onMouseDown_ = this.onMouseDown_.bind(this);
-        this.onTouchEnd_ = this.onTouchEnd_.bind(this);
-        this.onTouchMove_ = this.onTouchMove_.bind(this);
-        this.onTouchStart_ = this.onTouchStart_.bind(this);
-        this.elem_ = element;
-        this.emitter = new Emitter();
-        element.addEventListener('touchstart', this.onTouchStart_, {
-            passive: false
-        });
-        element.addEventListener('touchmove', this.onTouchMove_, {
-            passive: true
-        });
-        element.addEventListener('touchend', this.onTouchEnd_);
-        element.addEventListener('mousedown', this.onMouseDown_);
-    }
 }
 const cn$h = ClassName('txt');
 class NumberTextView {
-    onDraggingChange_(ev) {
-        if (ev.rawValue === null) {
-            this.element.classList.remove(cn$h(undefined, 'drg'));
-            return;
-        }
-        this.element.classList.add(cn$h(undefined, 'drg'));
-        const x = ev.rawValue / this.props_.get('pointerScale');
-        const aox = x + (x > 0 ? -1 : x < 0 ? +1 : 0);
-        const adx = constrainRange(-aox, -4, +4);
-        this.guideHeadElem_.setAttributeNS(null, 'd', [
-            `M ${aox + adx},0 L${aox},4 L${aox + adx},8`,
-            `M ${x},-1 L${x},9`
-        ].join(' '));
-        this.guideBodyElem_.setAttributeNS(null, 'd', `M 0,4 L${x},4`);
-        const formatter = this.props_.get('formatter');
-        this.tooltipElem_.textContent = formatter(this.value.rawValue);
-        this.tooltipElem_.style.left = `${x}px`;
-    }
-    refresh() {
-        const formatter = this.props_.get('formatter');
-        this.inputElement.value = formatter(this.value.rawValue);
-    }
-    onChange_() {
-        this.refresh();
-    }
     constructor(doc, config){
         this.onChange_ = this.onChange_.bind(this);
         this.props_ = config.props;
@@ -3359,8 +3372,63 @@ class NumberTextView {
         this.value = config.value;
         this.refresh();
     }
+    onDraggingChange_(ev) {
+        if (ev.rawValue === null) {
+            this.element.classList.remove(cn$h(undefined, 'drg'));
+            return;
+        }
+        this.element.classList.add(cn$h(undefined, 'drg'));
+        const x = ev.rawValue / this.props_.get('pointerScale');
+        const aox = x + (x > 0 ? -1 : x < 0 ? +1 : 0);
+        const adx = constrainRange(-aox, -4, +4);
+        this.guideHeadElem_.setAttributeNS(null, 'd', [
+            `M ${aox + adx},0 L${aox},4 L${aox + adx},8`,
+            `M ${x},-1 L${x},9`
+        ].join(' '));
+        this.guideBodyElem_.setAttributeNS(null, 'd', `M 0,4 L${x},4`);
+        const formatter = this.props_.get('formatter');
+        this.tooltipElem_.textContent = formatter(this.value.rawValue);
+        this.tooltipElem_.style.left = `${x}px`;
+    }
+    refresh() {
+        const formatter = this.props_.get('formatter');
+        this.inputElement.value = formatter(this.value.rawValue);
+    }
+    onChange_() {
+        this.refresh();
+    }
 }
 class NumberTextController {
+    constructor(doc, config){
+        var _a;
+        this.originRawValue_ = 0;
+        this.onInputChange_ = this.onInputChange_.bind(this);
+        this.onInputKeyDown_ = this.onInputKeyDown_.bind(this);
+        this.onInputKeyUp_ = this.onInputKeyUp_.bind(this);
+        this.onPointerDown_ = this.onPointerDown_.bind(this);
+        this.onPointerMove_ = this.onPointerMove_.bind(this);
+        this.onPointerUp_ = this.onPointerUp_.bind(this);
+        this.parser_ = config.parser;
+        this.props = config.props;
+        this.sliderProps_ = (_a = config.sliderProps) !== null && _a !== void 0 ? _a : null;
+        this.value = config.value;
+        this.viewProps = config.viewProps;
+        this.dragging_ = createValue(null);
+        this.view = new NumberTextView(doc, {
+            arrayPosition: config.arrayPosition,
+            dragging: this.dragging_,
+            props: this.props,
+            value: this.value,
+            viewProps: this.viewProps
+        });
+        this.view.inputElement.addEventListener('change', this.onInputChange_);
+        this.view.inputElement.addEventListener('keydown', this.onInputKeyDown_);
+        this.view.inputElement.addEventListener('keyup', this.onInputKeyUp_);
+        const ph = new PointerHandler(this.view.knobElement);
+        ph.emitter.on('down', this.onPointerDown_);
+        ph.emitter.on('move', this.onPointerMove_);
+        ph.emitter.on('up', this.onPointerUp_);
+    }
     constrainValue_(value) {
         var _a, _b;
         const min = (_a = this.sliderProps_) === null || _a === void 0 ? void 0 : _a.get('min');
@@ -3436,46 +3504,9 @@ class NumberTextController {
         });
         this.dragging_.rawValue = null;
     }
-    constructor(doc, config){
-        var _a;
-        this.originRawValue_ = 0;
-        this.onInputChange_ = this.onInputChange_.bind(this);
-        this.onInputKeyDown_ = this.onInputKeyDown_.bind(this);
-        this.onInputKeyUp_ = this.onInputKeyUp_.bind(this);
-        this.onPointerDown_ = this.onPointerDown_.bind(this);
-        this.onPointerMove_ = this.onPointerMove_.bind(this);
-        this.onPointerUp_ = this.onPointerUp_.bind(this);
-        this.parser_ = config.parser;
-        this.props = config.props;
-        this.sliderProps_ = (_a = config.sliderProps) !== null && _a !== void 0 ? _a : null;
-        this.value = config.value;
-        this.viewProps = config.viewProps;
-        this.dragging_ = createValue(null);
-        this.view = new NumberTextView(doc, {
-            arrayPosition: config.arrayPosition,
-            dragging: this.dragging_,
-            props: this.props,
-            value: this.value,
-            viewProps: this.viewProps
-        });
-        this.view.inputElement.addEventListener('change', this.onInputChange_);
-        this.view.inputElement.addEventListener('keydown', this.onInputKeyDown_);
-        this.view.inputElement.addEventListener('keyup', this.onInputKeyUp_);
-        const ph = new PointerHandler(this.view.knobElement);
-        ph.emitter.on('down', this.onPointerDown_);
-        ph.emitter.on('move', this.onPointerMove_);
-        ph.emitter.on('up', this.onPointerUp_);
-    }
 }
 const cn$g = ClassName('sld');
 class SliderView {
-    update_() {
-        const p = constrainRange(mapRange(this.value.rawValue, this.props_.get('min'), this.props_.get('max'), 0, 100), 0, 100);
-        this.knobElement.style.width = `${p}%`;
-    }
-    onChange_() {
-        this.update_();
-    }
     constructor(doc, config){
         this.onChange_ = this.onChange_.bind(this);
         this.props_ = config.props;
@@ -3496,8 +3527,35 @@ class SliderView {
         this.value = config.value;
         this.update_();
     }
+    update_() {
+        const p = constrainRange(mapRange(this.value.rawValue, this.props_.get('min'), this.props_.get('max'), 0, 100), 0, 100);
+        this.knobElement.style.width = `${p}%`;
+    }
+    onChange_() {
+        this.update_();
+    }
 }
 class SliderController {
+    constructor(doc, config){
+        this.onKeyDown_ = this.onKeyDown_.bind(this);
+        this.onKeyUp_ = this.onKeyUp_.bind(this);
+        this.onPointerDownOrMove_ = this.onPointerDownOrMove_.bind(this);
+        this.onPointerUp_ = this.onPointerUp_.bind(this);
+        this.value = config.value;
+        this.viewProps = config.viewProps;
+        this.props = config.props;
+        this.view = new SliderView(doc, {
+            props: this.props,
+            value: this.value,
+            viewProps: this.viewProps
+        });
+        this.ptHandler_ = new PointerHandler(this.view.trackElement);
+        this.ptHandler_.emitter.on('down', this.onPointerDownOrMove_);
+        this.ptHandler_.emitter.on('move', this.onPointerDownOrMove_);
+        this.ptHandler_.emitter.on('up', this.onPointerUp_);
+        this.view.trackElement.addEventListener('keydown', this.onKeyDown_);
+        this.view.trackElement.addEventListener('keyup', this.onKeyUp_);
+    }
     handlePointerEvent_(d, opts) {
         if (!d.point) {
             return;
@@ -3536,26 +3594,6 @@ class SliderController {
             last: true
         });
     }
-    constructor(doc, config){
-        this.onKeyDown_ = this.onKeyDown_.bind(this);
-        this.onKeyUp_ = this.onKeyUp_.bind(this);
-        this.onPointerDownOrMove_ = this.onPointerDownOrMove_.bind(this);
-        this.onPointerUp_ = this.onPointerUp_.bind(this);
-        this.value = config.value;
-        this.viewProps = config.viewProps;
-        this.props = config.props;
-        this.view = new SliderView(doc, {
-            props: this.props,
-            value: this.value,
-            viewProps: this.viewProps
-        });
-        this.ptHandler_ = new PointerHandler(this.view.trackElement);
-        this.ptHandler_.emitter.on('down', this.onPointerDownOrMove_);
-        this.ptHandler_.emitter.on('move', this.onPointerDownOrMove_);
-        this.ptHandler_.emitter.on('up', this.onPointerUp_);
-        this.view.trackElement.addEventListener('keydown', this.onKeyDown_);
-        this.view.trackElement.addEventListener('keyup', this.onKeyUp_);
-    }
 }
 const cn$f = ClassName('sldtxt');
 class SliderTextView {
@@ -3575,6 +3613,26 @@ class SliderTextView {
     }
 }
 class SliderTextController {
+    constructor(doc, config){
+        this.value = config.value;
+        this.viewProps = config.viewProps;
+        this.sliderC_ = new SliderController(doc, {
+            props: config.sliderProps,
+            value: config.value,
+            viewProps: this.viewProps
+        });
+        this.textC_ = new NumberTextController(doc, {
+            parser: config.parser,
+            props: config.textProps,
+            sliderProps: config.sliderProps,
+            value: config.value,
+            viewProps: config.viewProps
+        });
+        this.view = new SliderTextView(doc, {
+            sliderView: this.sliderC_.view,
+            textView: this.textC_.view
+        });
+    }
     get sliderController() {
         return this.sliderC_;
     }
@@ -3597,26 +3655,6 @@ class SliderTextController {
         return exportBladeState(null, {
             max: sliderProps.get('max'),
             min: sliderProps.get('min')
-        });
-    }
-    constructor(doc, config){
-        this.value = config.value;
-        this.viewProps = config.viewProps;
-        this.sliderC_ = new SliderController(doc, {
-            props: config.sliderProps,
-            value: config.value,
-            viewProps: this.viewProps
-        });
-        this.textC_ = new NumberTextController(doc, {
-            parser: config.parser,
-            props: config.textProps,
-            sliderProps: config.sliderProps,
-            value: config.value,
-            viewProps: config.viewProps
-        });
-        this.view = new SliderTextView(doc, {
-            sliderView: this.sliderC_.view,
-            textView: this.textC_.view
         });
     }
 }
@@ -3681,12 +3719,6 @@ function writePrimitive(target, value) {
 }
 const cn$e = ClassName('ckb');
 class CheckboxView {
-    update_() {
-        this.inputElement.checked = this.value.rawValue;
-    }
-    onValueChange_() {
-        this.update_();
-    }
     constructor(doc, config){
         this.onValueChange_ = this.onValueChange_.bind(this);
         this.element = doc.createElement('div');
@@ -3695,29 +3727,33 @@ class CheckboxView {
         const labelElem = doc.createElement('label');
         labelElem.classList.add(cn$e('l'));
         this.element.appendChild(labelElem);
+        this.labelElement = labelElem;
         const inputElem = doc.createElement('input');
         inputElem.classList.add(cn$e('i'));
         inputElem.type = 'checkbox';
-        labelElem.appendChild(inputElem);
+        this.labelElement.appendChild(inputElem);
         this.inputElement = inputElem;
         config.viewProps.bindDisabled(this.inputElement);
         const wrapperElem = doc.createElement('div');
         wrapperElem.classList.add(cn$e('w'));
-        labelElem.appendChild(wrapperElem);
+        this.labelElement.appendChild(wrapperElem);
         const markElem = createSvgIconElement(doc, 'check');
         wrapperElem.appendChild(markElem);
         config.value.emitter.on('change', this.onValueChange_);
         this.value = config.value;
         this.update_();
     }
+    update_() {
+        this.inputElement.checked = this.value.rawValue;
+    }
+    onValueChange_() {
+        this.update_();
+    }
 }
 class CheckboxController {
-    onInputChange_(e) {
-        const inputElem = forceCast(e.currentTarget);
-        this.value.rawValue = inputElem.checked;
-    }
     constructor(doc, config){
         this.onInputChange_ = this.onInputChange_.bind(this);
+        this.onLabelMouseDown_ = this.onLabelMouseDown_.bind(this);
         this.value = config.value;
         this.viewProps = config.viewProps;
         this.view = new CheckboxView(doc, {
@@ -3725,6 +3761,16 @@ class CheckboxController {
             viewProps: this.viewProps
         });
         this.view.inputElement.addEventListener('change', this.onInputChange_);
+        this.view.labelElement.addEventListener('mousedown', this.onLabelMouseDown_);
+    }
+    onInputChange_(ev) {
+        const inputElem = forceCast(ev.currentTarget);
+        this.value.rawValue = inputElem.checked;
+        ev.preventDefault();
+        ev.stopPropagation();
+    }
+    onLabelMouseDown_(ev) {
+        ev.preventDefault();
     }
 }
 function createConstraint$6(params) {
@@ -4065,6 +4111,11 @@ class IntColor {
             0
         ], 'rgb');
     }
+    constructor(comps, mode){
+        this.type = 'int';
+        this.mode = mode;
+        this.comps_ = constrainColorComponents(comps, mode, this.type);
+    }
     getComponents(opt_mode) {
         return appendAlphaComponent(convertColor(removeAlphaComponent(this.comps_), {
             mode: this.mode,
@@ -4083,26 +4134,9 @@ class IntColor {
             a: rgbComps[3]
         };
     }
-    constructor(comps, mode){
-        this.type = 'int';
-        this.mode = mode;
-        this.comps_ = constrainColorComponents(comps, mode, this.type);
-    }
 }
 const cn$c = ClassName('colp');
 class ColorPickerView {
-    get allFocusableElements() {
-        const elems = [
-            this.svPaletteView_.element,
-            this.hPaletteView_.element,
-            this.textsView_.modeSelectElement,
-            ...this.textsView_.inputViews.map((v)=>v.inputElement)
-        ];
-        if (this.alphaViews_) {
-            elems.push(this.alphaViews_.palette.element, this.alphaViews_.text.inputElement);
-        }
-        return elems;
-    }
     constructor(doc, config){
         this.alphaViews_ = null;
         this.element = doc.createElement('div');
@@ -4144,6 +4178,18 @@ class ColorPickerView {
             this.element.appendChild(aElem);
         }
     }
+    get allFocusableElements() {
+        const elems = [
+            this.svPaletteView_.element,
+            this.hPaletteView_.element,
+            this.textsView_.modeSelectElement,
+            ...this.textsView_.inputViews.map((v)=>v.inputElement)
+        ];
+        if (this.alphaViews_) {
+            elems.push(this.alphaViews_.palette.element, this.alphaViews_.text.inputElement);
+        }
+        return elems;
+    }
 }
 function parseColorType(value) {
     return value === 'int' ? 'int' : value === 'float' ? 'float' : undefined;
@@ -4167,6 +4213,11 @@ function extractColorType(params) {
     return (_a = params.color) === null || _a === void 0 ? void 0 : _a.type;
 }
 class FloatColor {
+    constructor(comps, mode){
+        this.type = 'float';
+        this.mode = mode;
+        this.comps_ = constrainColorComponents(comps, mode, this.type);
+    }
     getComponents(opt_mode) {
         return appendAlphaComponent(convertColor(removeAlphaComponent(this.comps_), {
             mode: this.mode,
@@ -4184,11 +4235,6 @@ class FloatColor {
             b: rgbComps[2],
             a: rgbComps[3]
         };
-    }
-    constructor(comps, mode){
-        this.type = 'float';
-        this.mode = mode;
-        this.comps_ = constrainColorComponents(comps, mode, this.type);
     }
 }
 const TYPE_TO_CONSTRUCTOR_MAP = {
@@ -4363,7 +4409,7 @@ function parseHexRgbColor(text) {
     return comps ? new IntColor(comps, 'rgb') : null;
 }
 function parseHexRgbaColorComponents(text) {
-    const mRgb = text.match(/^#?([0-9A-Fa-f])([0-9A-Fa-f])([0-9A-Fa-f])([0-9A-Fa-f])$/);
+    const mRgb = text.match(/^#([0-9A-Fa-f])([0-9A-Fa-f])([0-9A-Fa-f])([0-9A-Fa-f])$/);
     if (mRgb) {
         return [
             parseInt(mRgb[1] + mRgb[1], 16),
@@ -4498,7 +4544,7 @@ const PARSER_AND_RESULT = [
 ];
 function detectStringColor(text) {
     return PARSER_AND_RESULT.reduce((prev, param)=>{
-        let { parser , result: detection  } = param;
+        let { parser, result: detection } = param;
         if (prev) {
             return prev;
         }
@@ -4532,11 +4578,8 @@ function createColorStringParser(type) {
         parseFunctionalHslColor,
         parseFunctionalHslaColor
     ];
-    if (type === 'int') {
+    {
         parsers.push(createObjectRgbColorParser('int'), createObjectRgbaColorParser('int'));
-    }
-    if (type === 'float') {
-        parsers.push(createObjectRgbColorParser('float'), createObjectRgbaColorParser('float'));
     }
     const parser = composeParsers(parsers);
     return (text)=>{
@@ -4734,6 +4777,31 @@ function findColorStringifier(format) {
 }
 const cn$b = ClassName('apl');
 class APaletteView {
+    constructor(doc, config){
+        this.onValueChange_ = this.onValueChange_.bind(this);
+        this.value = config.value;
+        this.value.emitter.on('change', this.onValueChange_);
+        this.element = doc.createElement('div');
+        this.element.classList.add(cn$b());
+        config.viewProps.bindClassModifiers(this.element);
+        config.viewProps.bindTabIndex(this.element);
+        const barElem = doc.createElement('div');
+        barElem.classList.add(cn$b('b'));
+        this.element.appendChild(barElem);
+        const colorElem = doc.createElement('div');
+        colorElem.classList.add(cn$b('c'));
+        barElem.appendChild(colorElem);
+        this.colorElem_ = colorElem;
+        const markerElem = doc.createElement('div');
+        markerElem.classList.add(cn$b('m'));
+        this.element.appendChild(markerElem);
+        this.markerElem_ = markerElem;
+        const previewElem = doc.createElement('div');
+        previewElem.classList.add(cn$b('p'));
+        this.markerElem_.appendChild(previewElem);
+        this.previewElem_ = previewElem;
+        this.update_();
+    }
     update_() {
         const c = this.value.rawValue;
         const rgbaComps = c.getComponents('rgb');
@@ -4762,33 +4830,27 @@ class APaletteView {
     onValueChange_() {
         this.update_();
     }
-    constructor(doc, config){
-        this.onValueChange_ = this.onValueChange_.bind(this);
-        this.value = config.value;
-        this.value.emitter.on('change', this.onValueChange_);
-        this.element = doc.createElement('div');
-        this.element.classList.add(cn$b());
-        config.viewProps.bindClassModifiers(this.element);
-        config.viewProps.bindTabIndex(this.element);
-        const barElem = doc.createElement('div');
-        barElem.classList.add(cn$b('b'));
-        this.element.appendChild(barElem);
-        const colorElem = doc.createElement('div');
-        colorElem.classList.add(cn$b('c'));
-        barElem.appendChild(colorElem);
-        this.colorElem_ = colorElem;
-        const markerElem = doc.createElement('div');
-        markerElem.classList.add(cn$b('m'));
-        this.element.appendChild(markerElem);
-        this.markerElem_ = markerElem;
-        const previewElem = doc.createElement('div');
-        previewElem.classList.add(cn$b('p'));
-        this.markerElem_.appendChild(previewElem);
-        this.previewElem_ = previewElem;
-        this.update_();
-    }
 }
 class APaletteController {
+    constructor(doc, config){
+        this.onKeyDown_ = this.onKeyDown_.bind(this);
+        this.onKeyUp_ = this.onKeyUp_.bind(this);
+        this.onPointerDown_ = this.onPointerDown_.bind(this);
+        this.onPointerMove_ = this.onPointerMove_.bind(this);
+        this.onPointerUp_ = this.onPointerUp_.bind(this);
+        this.value = config.value;
+        this.viewProps = config.viewProps;
+        this.view = new APaletteView(doc, {
+            value: this.value,
+            viewProps: this.viewProps
+        });
+        this.ptHandler_ = new PointerHandler(this.view.element);
+        this.ptHandler_.emitter.on('down', this.onPointerDown_);
+        this.ptHandler_.emitter.on('move', this.onPointerMove_);
+        this.ptHandler_.emitter.on('up', this.onPointerUp_);
+        this.view.element.addEventListener('keydown', this.onKeyDown_);
+        this.view.element.addEventListener('keyup', this.onKeyUp_);
+    }
     handlePointerEvent_(d, opts) {
         if (!d.point) {
             return;
@@ -4848,25 +4910,6 @@ class APaletteController {
             last: true
         });
     }
-    constructor(doc, config){
-        this.onKeyDown_ = this.onKeyDown_.bind(this);
-        this.onKeyUp_ = this.onKeyUp_.bind(this);
-        this.onPointerDown_ = this.onPointerDown_.bind(this);
-        this.onPointerMove_ = this.onPointerMove_.bind(this);
-        this.onPointerUp_ = this.onPointerUp_.bind(this);
-        this.value = config.value;
-        this.viewProps = config.viewProps;
-        this.view = new APaletteView(doc, {
-            value: this.value,
-            viewProps: this.viewProps
-        });
-        this.ptHandler_ = new PointerHandler(this.view.element);
-        this.ptHandler_.emitter.on('down', this.onPointerDown_);
-        this.ptHandler_.emitter.on('move', this.onPointerMove_);
-        this.ptHandler_.emitter.on('up', this.onPointerUp_);
-        this.view.element.addEventListener('keydown', this.onKeyDown_);
-        this.view.element.addEventListener('keyup', this.onKeyUp_);
-    }
 }
 const cn$a = ClassName('coltxt');
 function createModeSelectElement(doc) {
@@ -4899,26 +4942,6 @@ function createModeSelectElement(doc) {
     return selectElem;
 }
 class ColorTextsView {
-    get modeSelectElement() {
-        return this.modeElem_;
-    }
-    get inputViews() {
-        return this.inputViews_;
-    }
-    set inputViews(inputViews) {
-        this.inputViews_ = inputViews;
-        this.applyInputViews_();
-    }
-    applyInputViews_() {
-        removeChildElements(this.inputsElem_);
-        const doc = this.element.ownerDocument;
-        this.inputViews_.forEach((v)=>{
-            const compElem = doc.createElement('div');
-            compElem.classList.add(cn$a('c'));
-            compElem.appendChild(v.element);
-            this.inputsElem_.appendChild(compElem);
-        });
-    }
     constructor(doc, config){
         this.element = doc.createElement('div');
         this.element.classList.add(cn$a());
@@ -4942,6 +4965,26 @@ class ColorTextsView {
         this.applyInputViews_();
         bindValue(config.mode, (mode)=>{
             this.modeElem_.value = mode;
+        });
+    }
+    get modeSelectElement() {
+        return this.modeElem_;
+    }
+    get inputViews() {
+        return this.inputViews_;
+    }
+    set inputViews(inputViews) {
+        this.inputViews_ = inputViews;
+        this.applyInputViews_();
+    }
+    applyInputViews_() {
+        removeChildElements(this.inputsElem_);
+        const doc = this.element.ownerDocument;
+        this.inputViews_.forEach((v)=>{
+            const compElem = doc.createElement('div');
+            compElem.classList.add(cn$a('c'));
+            compElem.appendChild(v.element);
+            this.inputsElem_.appendChild(compElem);
         });
     }
 }
@@ -5025,6 +5068,24 @@ function isColorMode(mode) {
     return mode !== 'hex';
 }
 class ColorTextsController {
+    constructor(doc, config){
+        this.onModeSelectChange_ = this.onModeSelectChange_.bind(this);
+        this.colorType_ = config.colorType;
+        this.value = config.value;
+        this.viewProps = config.viewProps;
+        this.colorMode = createValue(this.value.rawValue.mode);
+        this.ccs_ = this.createComponentControllers_(doc);
+        this.view = new ColorTextsView(doc, {
+            mode: this.colorMode,
+            inputViews: [
+                this.ccs_[0].view,
+                this.ccs_[1].view,
+                this.ccs_[2].view
+            ],
+            viewProps: this.viewProps
+        });
+        this.view.modeSelectElement.addEventListener('change', this.onModeSelectChange_);
+    }
     createComponentControllers_(doc) {
         const mode = this.colorMode.rawValue;
         if (isColorMode(mode)) {
@@ -5046,41 +5107,9 @@ class ColorTextsController {
         this.ccs_ = this.createComponentControllers_(this.view.element.ownerDocument);
         this.view.inputViews = this.ccs_.map((cc)=>cc.view);
     }
-    constructor(doc, config){
-        this.onModeSelectChange_ = this.onModeSelectChange_.bind(this);
-        this.colorType_ = config.colorType;
-        this.value = config.value;
-        this.viewProps = config.viewProps;
-        this.colorMode = createValue(this.value.rawValue.mode);
-        this.ccs_ = this.createComponentControllers_(doc);
-        this.view = new ColorTextsView(doc, {
-            mode: this.colorMode,
-            inputViews: [
-                this.ccs_[0].view,
-                this.ccs_[1].view,
-                this.ccs_[2].view
-            ],
-            viewProps: this.viewProps
-        });
-        this.view.modeSelectElement.addEventListener('change', this.onModeSelectChange_);
-    }
 }
 const cn$9 = ClassName('hpl');
 class HPaletteView {
-    update_() {
-        const c = this.value.rawValue;
-        const [h] = c.getComponents('hsv');
-        this.markerElem_.style.backgroundColor = colorToFunctionalRgbString(new IntColor([
-            h,
-            100,
-            100
-        ], 'hsv'));
-        const left = mapRange(h, 0, 360, 0, 100);
-        this.markerElem_.style.left = `${left}%`;
-    }
-    onValueChange_() {
-        this.update_();
-    }
     constructor(doc, config){
         this.onValueChange_ = this.onValueChange_.bind(this);
         this.value = config.value;
@@ -5098,8 +5127,41 @@ class HPaletteView {
         this.markerElem_ = markerElem;
         this.update_();
     }
+    update_() {
+        const c = this.value.rawValue;
+        const [h] = c.getComponents('hsv');
+        this.markerElem_.style.backgroundColor = colorToFunctionalRgbString(new IntColor([
+            h,
+            100,
+            100
+        ], 'hsv'));
+        const left = mapRange(h, 0, 360, 0, 100);
+        this.markerElem_.style.left = `${left}%`;
+    }
+    onValueChange_() {
+        this.update_();
+    }
 }
 class HPaletteController {
+    constructor(doc, config){
+        this.onKeyDown_ = this.onKeyDown_.bind(this);
+        this.onKeyUp_ = this.onKeyUp_.bind(this);
+        this.onPointerDown_ = this.onPointerDown_.bind(this);
+        this.onPointerMove_ = this.onPointerMove_.bind(this);
+        this.onPointerUp_ = this.onPointerUp_.bind(this);
+        this.value = config.value;
+        this.viewProps = config.viewProps;
+        this.view = new HPaletteView(doc, {
+            value: this.value,
+            viewProps: this.viewProps
+        });
+        this.ptHandler_ = new PointerHandler(this.view.element);
+        this.ptHandler_.emitter.on('down', this.onPointerDown_);
+        this.ptHandler_.emitter.on('move', this.onPointerMove_);
+        this.ptHandler_.emitter.on('up', this.onPointerUp_);
+        this.view.element.addEventListener('keydown', this.onKeyDown_);
+        this.view.element.addEventListener('keyup', this.onKeyUp_);
+    }
     handlePointerEvent_(d, opts) {
         if (!d.point) {
             return;
@@ -5159,29 +5221,30 @@ class HPaletteController {
             last: true
         });
     }
-    constructor(doc, config){
-        this.onKeyDown_ = this.onKeyDown_.bind(this);
-        this.onKeyUp_ = this.onKeyUp_.bind(this);
-        this.onPointerDown_ = this.onPointerDown_.bind(this);
-        this.onPointerMove_ = this.onPointerMove_.bind(this);
-        this.onPointerUp_ = this.onPointerUp_.bind(this);
-        this.value = config.value;
-        this.viewProps = config.viewProps;
-        this.view = new HPaletteView(doc, {
-            value: this.value,
-            viewProps: this.viewProps
-        });
-        this.ptHandler_ = new PointerHandler(this.view.element);
-        this.ptHandler_.emitter.on('down', this.onPointerDown_);
-        this.ptHandler_.emitter.on('move', this.onPointerMove_);
-        this.ptHandler_.emitter.on('up', this.onPointerUp_);
-        this.view.element.addEventListener('keydown', this.onKeyDown_);
-        this.view.element.addEventListener('keyup', this.onKeyUp_);
-    }
 }
 const cn$8 = ClassName('svp');
 const CANVAS_RESOL = 64;
 class SvPaletteView {
+    constructor(doc, config){
+        this.onValueChange_ = this.onValueChange_.bind(this);
+        this.value = config.value;
+        this.value.emitter.on('change', this.onValueChange_);
+        this.element = doc.createElement('div');
+        this.element.classList.add(cn$8());
+        config.viewProps.bindClassModifiers(this.element);
+        config.viewProps.bindTabIndex(this.element);
+        const canvasElem = doc.createElement('canvas');
+        canvasElem.height = CANVAS_RESOL;
+        canvasElem.width = CANVAS_RESOL;
+        canvasElem.classList.add(cn$8('c'));
+        this.element.appendChild(canvasElem);
+        this.canvasElement = canvasElem;
+        const markerElem = doc.createElement('div');
+        markerElem.classList.add(cn$8('m'));
+        this.element.appendChild(markerElem);
+        this.markerElem_ = markerElem;
+        this.update_();
+    }
     update_() {
         const ctx = getCanvasContext(this.canvasElement);
         if (!ctx) {
@@ -5214,28 +5277,27 @@ class SvPaletteView {
     onValueChange_() {
         this.update_();
     }
-    constructor(doc, config){
-        this.onValueChange_ = this.onValueChange_.bind(this);
-        this.value = config.value;
-        this.value.emitter.on('change', this.onValueChange_);
-        this.element = doc.createElement('div');
-        this.element.classList.add(cn$8());
-        config.viewProps.bindClassModifiers(this.element);
-        config.viewProps.bindTabIndex(this.element);
-        const canvasElem = doc.createElement('canvas');
-        canvasElem.height = CANVAS_RESOL;
-        canvasElem.width = CANVAS_RESOL;
-        canvasElem.classList.add(cn$8('c'));
-        this.element.appendChild(canvasElem);
-        this.canvasElement = canvasElem;
-        const markerElem = doc.createElement('div');
-        markerElem.classList.add(cn$8('m'));
-        this.element.appendChild(markerElem);
-        this.markerElem_ = markerElem;
-        this.update_();
-    }
 }
 class SvPaletteController {
+    constructor(doc, config){
+        this.onKeyDown_ = this.onKeyDown_.bind(this);
+        this.onKeyUp_ = this.onKeyUp_.bind(this);
+        this.onPointerDown_ = this.onPointerDown_.bind(this);
+        this.onPointerMove_ = this.onPointerMove_.bind(this);
+        this.onPointerUp_ = this.onPointerUp_.bind(this);
+        this.value = config.value;
+        this.viewProps = config.viewProps;
+        this.view = new SvPaletteView(doc, {
+            value: this.value,
+            viewProps: this.viewProps
+        });
+        this.ptHandler_ = new PointerHandler(this.view.element);
+        this.ptHandler_.emitter.on('down', this.onPointerDown_);
+        this.ptHandler_.emitter.on('move', this.onPointerMove_);
+        this.ptHandler_.emitter.on('up', this.onPointerUp_);
+        this.view.element.addEventListener('keydown', this.onKeyDown_);
+        this.view.element.addEventListener('keyup', this.onKeyUp_);
+    }
     handlePointerEvent_(d, opts) {
         if (!d.point) {
             return;
@@ -5301,30 +5363,8 @@ class SvPaletteController {
             last: true
         });
     }
-    constructor(doc, config){
-        this.onKeyDown_ = this.onKeyDown_.bind(this);
-        this.onKeyUp_ = this.onKeyUp_.bind(this);
-        this.onPointerDown_ = this.onPointerDown_.bind(this);
-        this.onPointerMove_ = this.onPointerMove_.bind(this);
-        this.onPointerUp_ = this.onPointerUp_.bind(this);
-        this.value = config.value;
-        this.viewProps = config.viewProps;
-        this.view = new SvPaletteView(doc, {
-            value: this.value,
-            viewProps: this.viewProps
-        });
-        this.ptHandler_ = new PointerHandler(this.view.element);
-        this.ptHandler_.emitter.on('down', this.onPointerDown_);
-        this.ptHandler_.emitter.on('move', this.onPointerMove_);
-        this.ptHandler_.emitter.on('up', this.onPointerUp_);
-        this.view.element.addEventListener('keydown', this.onKeyDown_);
-        this.view.element.addEventListener('keyup', this.onKeyUp_);
-    }
 }
 class ColorPickerController {
-    get textsController() {
-        return this.textsC_;
-    }
     constructor(doc, config){
         this.value = config.value;
         this.viewProps = config.viewProps;
@@ -5386,16 +5426,12 @@ class ColorPickerController {
             viewProps: this.viewProps
         });
     }
+    get textsController() {
+        return this.textsC_;
+    }
 }
 const cn$7 = ClassName('colsw');
 class ColorSwatchView {
-    update_() {
-        const value = this.value.rawValue;
-        this.swatchElem_.style.backgroundColor = colorToHexRgbaString(value);
-    }
-    onValueChange_() {
-        this.update_();
-    }
     constructor(doc, config){
         this.onValueChange_ = this.onValueChange_.bind(this);
         config.value.emitter.on('change', this.onValueChange_);
@@ -5414,6 +5450,13 @@ class ColorSwatchView {
         this.buttonElement = buttonElem;
         this.update_();
     }
+    update_() {
+        const value = this.value.rawValue;
+        this.swatchElem_.style.backgroundColor = colorToHexRgbaString(value);
+    }
+    onValueChange_() {
+        this.update_();
+    }
 }
 class ColorSwatchController {
     constructor(doc, config){
@@ -5426,50 +5469,6 @@ class ColorSwatchController {
     }
 }
 class ColorController {
-    get textController() {
-        return this.textC_;
-    }
-    onButtonBlur_(e) {
-        if (!this.popC_) {
-            return;
-        }
-        const elem = this.view.element;
-        const nextTarget = forceCast(e.relatedTarget);
-        if (!nextTarget || !elem.contains(nextTarget)) {
-            this.popC_.shows.rawValue = false;
-        }
-    }
-    onButtonClick_() {
-        this.foldable_.set('expanded', !this.foldable_.get('expanded'));
-        if (this.foldable_.get('expanded')) {
-            this.pickerC_.view.allFocusableElements[0].focus();
-        }
-    }
-    onPopupChildBlur_(ev) {
-        if (!this.popC_) {
-            return;
-        }
-        const elem = this.popC_.view.element;
-        const nextTarget = findNextTarget(ev);
-        if (nextTarget && elem.contains(nextTarget)) {
-            return;
-        }
-        if (nextTarget && nextTarget === this.swatchC_.view.buttonElement && !supportsTouch(elem.ownerDocument)) {
-            return;
-        }
-        this.popC_.shows.rawValue = false;
-    }
-    onPopupChildKeydown_(ev) {
-        if (this.popC_) {
-            if (ev.key === 'Escape') {
-                this.popC_.shows.rawValue = false;
-            }
-        } else if (this.view.pickerElement) {
-            if (ev.key === 'Escape') {
-                this.swatchC_.view.buttonElement.focus();
-            }
-        }
-    }
     constructor(doc, config){
         this.onButtonBlur_ = this.onButtonBlur_.bind(this);
         this.onButtonClick_ = this.onButtonClick_.bind(this);
@@ -5525,6 +5524,50 @@ class ColorController {
         } else if (this.view.pickerElement) {
             this.view.pickerElement.appendChild(this.pickerC_.view.element);
             bindFoldable(this.foldable_, this.view.pickerElement);
+        }
+    }
+    get textController() {
+        return this.textC_;
+    }
+    onButtonBlur_(e) {
+        if (!this.popC_) {
+            return;
+        }
+        const elem = this.view.element;
+        const nextTarget = forceCast(e.relatedTarget);
+        if (!nextTarget || !elem.contains(nextTarget)) {
+            this.popC_.shows.rawValue = false;
+        }
+    }
+    onButtonClick_() {
+        this.foldable_.set('expanded', !this.foldable_.get('expanded'));
+        if (this.foldable_.get('expanded')) {
+            this.pickerC_.view.allFocusableElements[0].focus();
+        }
+    }
+    onPopupChildBlur_(ev) {
+        if (!this.popC_) {
+            return;
+        }
+        const elem = this.popC_.view.element;
+        const nextTarget = findNextTarget(ev);
+        if (nextTarget && elem.contains(nextTarget)) {
+            return;
+        }
+        if (nextTarget && nextTarget === this.swatchC_.view.buttonElement && !supportsTouch(elem.ownerDocument)) {
+            return;
+        }
+        this.popC_.shows.rawValue = false;
+    }
+    onPopupChildKeydown_(ev) {
+        if (this.popC_) {
+            if (ev.key === 'Escape') {
+                this.popC_.shows.rawValue = false;
+            }
+        } else if (this.view.pickerElement) {
+            if (ev.key === 'Escape') {
+                this.swatchC_.view.buttonElement.focus();
+            }
         }
     }
 }
@@ -5825,16 +5868,16 @@ const StringColorInputPlugin = createPlugin({
     }
 });
 class PointNdConstraint {
+    constructor(config){
+        this.components = config.components;
+        this.asm_ = config.assembly;
+    }
     constrain(value) {
         const comps = this.asm_.toComponents(value).map((comp, index)=>{
             var _a, _b;
             return (_b = (_a = this.components[index]) === null || _a === void 0 ? void 0 : _a.constrain(comp)) !== null && _b !== void 0 ? _b : comp;
         });
         return this.asm_.fromComponents(comps);
-    }
-    constructor(config){
-        this.components = config.components;
-        this.asm_ = config.assembly;
     }
 }
 const cn$6 = ClassName('pndtxt');
@@ -5863,9 +5906,6 @@ function createAxisController(doc, config, index) {
     });
 }
 class PointNdTextController {
-    get textControllers() {
-        return this.acs_;
-    }
     constructor(doc, config){
         this.value = config.value;
         this.viewProps = config.viewProps;
@@ -5885,6 +5925,9 @@ class PointNdTextController {
         this.view = new PointNdTextView(doc, {
             textViews: this.acs_.map((ac)=>ac.view)
         });
+    }
+    get textControllers() {
+        return this.acs_;
     }
 }
 class SliderInputBindingApi extends BindingApi {
@@ -5985,6 +6028,10 @@ const NumberInputPlugin = createPlugin({
     }
 });
 class Point2d {
+    constructor(x = 0, y = 0){
+        this.x = x;
+        this.y = y;
+    }
     getComponents() {
         return [
             this.x,
@@ -6010,10 +6057,6 @@ class Point2d {
             x: this.x,
             y: this.y
         };
-    }
-    constructor(x = 0, y = 0){
-        this.x = x;
-        this.y = y;
     }
 }
 const Point2dAssembly = {
@@ -6052,31 +6095,6 @@ class Point2dView {
 }
 const cn$4 = ClassName('p2dp');
 class Point2dPickerView {
-    get allFocusableElements() {
-        return [
-            this.padElement
-        ];
-    }
-    update_() {
-        const [x, y] = this.value.rawValue.getComponents();
-        const max = this.props_.get('max');
-        const px = mapRange(x, -max, +max, 0, 100);
-        const py = mapRange(y, -max, +max, 0, 100);
-        const ipy = this.props_.get('invertsY') ? 100 - py : py;
-        this.lineElem_.setAttributeNS(null, 'x2', `${px}%`);
-        this.lineElem_.setAttributeNS(null, 'y2', `${ipy}%`);
-        this.markerElem_.style.left = `${px}%`;
-        this.markerElem_.style.top = `${ipy}%`;
-    }
-    onValueChange_() {
-        this.update_();
-    }
-    onPropsChange_() {
-        this.update_();
-    }
-    onFoldableChange_() {
-        this.update_();
-    }
     constructor(doc, config){
         this.onFoldableChange_ = this.onFoldableChange_.bind(this);
         this.onPropsChange_ = this.onPropsChange_.bind(this);
@@ -6126,6 +6144,31 @@ class Point2dPickerView {
         this.value = config.value;
         this.update_();
     }
+    get allFocusableElements() {
+        return [
+            this.padElement
+        ];
+    }
+    update_() {
+        const [x, y] = this.value.rawValue.getComponents();
+        const max = this.props_.get('max');
+        const px = mapRange(x, -max, +max, 0, 100);
+        const py = mapRange(y, -max, +max, 0, 100);
+        const ipy = this.props_.get('invertsY') ? 100 - py : py;
+        this.lineElem_.setAttributeNS(null, 'x2', `${px}%`);
+        this.lineElem_.setAttributeNS(null, 'y2', `${ipy}%`);
+        this.markerElem_.style.left = `${px}%`;
+        this.markerElem_.style.top = `${ipy}%`;
+    }
+    onValueChange_() {
+        this.update_();
+    }
+    onPropsChange_() {
+        this.update_();
+    }
+    onFoldableChange_() {
+        this.update_();
+    }
 }
 function computeOffset(ev, keyScales, invertsY) {
     return [
@@ -6134,6 +6177,28 @@ function computeOffset(ev, keyScales, invertsY) {
     ];
 }
 class Point2dPickerController {
+    constructor(doc, config){
+        this.onPadKeyDown_ = this.onPadKeyDown_.bind(this);
+        this.onPadKeyUp_ = this.onPadKeyUp_.bind(this);
+        this.onPointerDown_ = this.onPointerDown_.bind(this);
+        this.onPointerMove_ = this.onPointerMove_.bind(this);
+        this.onPointerUp_ = this.onPointerUp_.bind(this);
+        this.props = config.props;
+        this.value = config.value;
+        this.viewProps = config.viewProps;
+        this.view = new Point2dPickerView(doc, {
+            layout: config.layout,
+            props: this.props,
+            value: this.value,
+            viewProps: this.viewProps
+        });
+        this.ptHandler_ = new PointerHandler(this.view.padElement);
+        this.ptHandler_.emitter.on('down', this.onPointerDown_);
+        this.ptHandler_.emitter.on('move', this.onPointerMove_);
+        this.ptHandler_.emitter.on('up', this.onPointerUp_);
+        this.view.padElement.addEventListener('keydown', this.onPadKeyDown_);
+        this.view.padElement.addEventListener('keyup', this.onPadKeyUp_);
+    }
     handlePointerEvent_(d, opts) {
         if (!d.point) {
             return;
@@ -6190,74 +6255,8 @@ class Point2dPickerController {
             last: true
         });
     }
-    constructor(doc, config){
-        this.onPadKeyDown_ = this.onPadKeyDown_.bind(this);
-        this.onPadKeyUp_ = this.onPadKeyUp_.bind(this);
-        this.onPointerDown_ = this.onPointerDown_.bind(this);
-        this.onPointerMove_ = this.onPointerMove_.bind(this);
-        this.onPointerUp_ = this.onPointerUp_.bind(this);
-        this.props = config.props;
-        this.value = config.value;
-        this.viewProps = config.viewProps;
-        this.view = new Point2dPickerView(doc, {
-            layout: config.layout,
-            props: this.props,
-            value: this.value,
-            viewProps: this.viewProps
-        });
-        this.ptHandler_ = new PointerHandler(this.view.padElement);
-        this.ptHandler_.emitter.on('down', this.onPointerDown_);
-        this.ptHandler_.emitter.on('move', this.onPointerMove_);
-        this.ptHandler_.emitter.on('up', this.onPointerUp_);
-        this.view.padElement.addEventListener('keydown', this.onPadKeyDown_);
-        this.view.padElement.addEventListener('keyup', this.onPadKeyUp_);
-    }
 }
 class Point2dController {
-    get textController() {
-        return this.textC_;
-    }
-    onPadButtonBlur_(e) {
-        if (!this.popC_) {
-            return;
-        }
-        const elem = this.view.element;
-        const nextTarget = forceCast(e.relatedTarget);
-        if (!nextTarget || !elem.contains(nextTarget)) {
-            this.popC_.shows.rawValue = false;
-        }
-    }
-    onPadButtonClick_() {
-        this.foldable_.set('expanded', !this.foldable_.get('expanded'));
-        if (this.foldable_.get('expanded')) {
-            this.pickerC_.view.allFocusableElements[0].focus();
-        }
-    }
-    onPopupChildBlur_(ev) {
-        if (!this.popC_) {
-            return;
-        }
-        const elem = this.popC_.view.element;
-        const nextTarget = findNextTarget(ev);
-        if (nextTarget && elem.contains(nextTarget)) {
-            return;
-        }
-        if (nextTarget && nextTarget === this.view.buttonElement && !supportsTouch(elem.ownerDocument)) {
-            return;
-        }
-        this.popC_.shows.rawValue = false;
-    }
-    onPopupChildKeydown_(ev) {
-        if (this.popC_) {
-            if (ev.key === 'Escape') {
-                this.popC_.shows.rawValue = false;
-            }
-        } else if (this.view.pickerElement) {
-            if (ev.key === 'Escape') {
-                this.view.buttonElement.focus();
-            }
-        }
-    }
     constructor(doc, config){
         var _a, _b;
         this.onPopupChildBlur_ = this.onPopupChildBlur_.bind(this);
@@ -6313,6 +6312,50 @@ class Point2dController {
         } else if (this.view.pickerElement) {
             this.view.pickerElement.appendChild(this.pickerC_.view.element);
             bindFoldable(this.foldable_, this.view.pickerElement);
+        }
+    }
+    get textController() {
+        return this.textC_;
+    }
+    onPadButtonBlur_(e) {
+        if (!this.popC_) {
+            return;
+        }
+        const elem = this.view.element;
+        const nextTarget = forceCast(e.relatedTarget);
+        if (!nextTarget || !elem.contains(nextTarget)) {
+            this.popC_.shows.rawValue = false;
+        }
+    }
+    onPadButtonClick_() {
+        this.foldable_.set('expanded', !this.foldable_.get('expanded'));
+        if (this.foldable_.get('expanded')) {
+            this.pickerC_.view.allFocusableElements[0].focus();
+        }
+    }
+    onPopupChildBlur_(ev) {
+        if (!this.popC_) {
+            return;
+        }
+        const elem = this.popC_.view.element;
+        const nextTarget = findNextTarget(ev);
+        if (nextTarget && elem.contains(nextTarget)) {
+            return;
+        }
+        if (nextTarget && nextTarget === this.view.buttonElement && !supportsTouch(elem.ownerDocument)) {
+            return;
+        }
+        this.popC_.shows.rawValue = false;
+    }
+    onPopupChildKeydown_(ev) {
+        if (this.popC_) {
+            if (ev.key === 'Escape') {
+                this.popC_.shows.rawValue = false;
+            }
+        } else if (this.view.pickerElement) {
+            if (ev.key === 'Escape') {
+                this.view.buttonElement.focus();
+            }
         }
     }
 }
@@ -6412,6 +6455,11 @@ const Point2dInputPlugin = createPlugin({
     }
 });
 class Point3d {
+    constructor(x = 0, y = 0, z = 0){
+        this.x = x;
+        this.y = y;
+        this.z = z;
+    }
     getComponents() {
         return [
             this.x,
@@ -6440,11 +6488,6 @@ class Point3d {
             y: this.y,
             z: this.z
         };
-    }
-    constructor(x = 0, y = 0, z = 0){
-        this.x = x;
-        this.y = y;
-        this.z = z;
     }
 }
 const Point3dAssembly = {
@@ -6518,6 +6561,12 @@ const Point3dInputPlugin = createPlugin({
     }
 });
 class Point4d {
+    constructor(x = 0, y = 0, z = 0, w = 0){
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.w = w;
+    }
     getComponents() {
         return [
             this.x,
@@ -6549,12 +6598,6 @@ class Point4d {
             z: this.z,
             w: this.w
         };
-    }
-    constructor(x = 0, y = 0, z = 0, w = 0){
-        this.x = x;
-        this.y = y;
-        this.z = z;
-        this.w = w;
     }
 }
 const Point4dAssembly = {
@@ -6701,23 +6744,6 @@ const Constants = {
 };
 const cn$3 = ClassName('mll');
 class MultiLogView {
-    update_() {
-        const elem = this.textareaElem_;
-        const shouldScroll = elem.scrollTop === elem.scrollHeight - elem.clientHeight;
-        const lines = [];
-        this.value.rawValue.forEach((value)=>{
-            if (value !== undefined) {
-                lines.push(this.formatter_(value));
-            }
-        });
-        elem.textContent = lines.join('\n');
-        if (shouldScroll) {
-            elem.scrollTop = elem.scrollHeight;
-        }
-    }
-    onValueUpdate_() {
-        this.update_();
-    }
     constructor(doc, config){
         this.onValueUpdate_ = this.onValueUpdate_.bind(this);
         this.formatter_ = config.formatter;
@@ -6735,6 +6761,23 @@ class MultiLogView {
         this.value = config.value;
         this.update_();
     }
+    update_() {
+        const elem = this.textareaElem_;
+        const shouldScroll = elem.scrollTop === elem.scrollHeight - elem.clientHeight;
+        const lines = [];
+        this.value.rawValue.forEach((value)=>{
+            if (value !== undefined) {
+                lines.push(this.formatter_(value));
+            }
+        });
+        elem.textContent = lines.join('\n');
+        if (shouldScroll) {
+            elem.scrollTop = elem.scrollHeight;
+        }
+    }
+    onValueUpdate_() {
+        this.update_();
+    }
 }
 class MultiLogController {
     constructor(doc, config){
@@ -6750,14 +6793,6 @@ class MultiLogController {
 }
 const cn$2 = ClassName('sgl');
 class SingleLogView {
-    update_() {
-        const values = this.value.rawValue;
-        const lastValue = values[values.length - 1];
-        this.inputElement.value = lastValue !== undefined ? this.formatter_(lastValue) : '';
-    }
-    onValueUpdate_() {
-        this.update_();
-    }
     constructor(doc, config){
         this.onValueUpdate_ = this.onValueUpdate_.bind(this);
         this.formatter_ = config.formatter;
@@ -6773,6 +6808,14 @@ class SingleLogView {
         this.inputElement = inputElem;
         config.value.emitter.on('change', this.onValueUpdate_);
         this.value = config.value;
+        this.update_();
+    }
+    update_() {
+        const values = this.value.rawValue;
+        const lastValue = values[values.length - 1];
+        this.inputElement.value = lastValue !== undefined ? this.formatter_(lastValue) : '';
+    }
+    onValueUpdate_() {
         this.update_();
     }
 }
@@ -6839,50 +6882,6 @@ class GraphLogMonitorBindingApi extends BindingApi {
 }
 const cn$1 = ClassName('grl');
 class GraphLogView {
-    get graphElement() {
-        return this.svgElem_;
-    }
-    update_() {
-        const bounds = this.svgElem_.getBoundingClientRect();
-        const maxIndex = this.value.rawValue.length - 1;
-        const min = this.props_.get('min');
-        const max = this.props_.get('max');
-        const points = [];
-        this.value.rawValue.forEach((v, index)=>{
-            if (v === undefined) {
-                return;
-            }
-            const x = mapRange(index, 0, maxIndex, 0, bounds.width);
-            const y = mapRange(v, min, max, bounds.height, 0);
-            points.push([
-                x,
-                y
-            ].join(','));
-        });
-        this.lineElem_.setAttributeNS(null, 'points', points.join(' '));
-        const tooltipElem = this.tooltipElem_;
-        const value = this.value.rawValue[this.cursor_.rawValue];
-        if (value === undefined) {
-            tooltipElem.classList.remove(cn$1('t', 'a'));
-            return;
-        }
-        const tx = mapRange(this.cursor_.rawValue, 0, maxIndex, 0, bounds.width);
-        const ty = mapRange(value, min, max, bounds.height, 0);
-        tooltipElem.style.left = `${tx}px`;
-        tooltipElem.style.top = `${ty}px`;
-        tooltipElem.textContent = `${this.formatter_(value)}`;
-        if (!tooltipElem.classList.contains(cn$1('t', 'a'))) {
-            tooltipElem.classList.add(cn$1('t', 'a'), cn$1('t', 'in'));
-            forceReflow(tooltipElem);
-            tooltipElem.classList.remove(cn$1('t', 'in'));
-        }
-    }
-    onValueUpdate_() {
-        this.update_();
-    }
-    onCursorChange_() {
-        this.update_();
-    }
     constructor(doc, config){
         this.onCursorChange_ = this.onCursorChange_.bind(this);
         this.onValueUpdate_ = this.onValueUpdate_.bind(this);
@@ -6909,44 +6908,52 @@ class GraphLogView {
         this.value = config.value;
         this.update_();
     }
-}
-class GraphLogController {
-    importProps(state) {
-        return importBladeState(state, null, (p)=>({
-                max: p.required.number,
-                min: p.required.number
-            }), (result)=>{
-            this.props.set('max', result.max);
-            this.props.set('min', result.min);
-            return true;
+    get graphElement() {
+        return this.svgElem_;
+    }
+    update_() {
+        const { clientWidth: w, clientHeight: h } = this.element;
+        const maxIndex = this.value.rawValue.length - 1;
+        const min = this.props_.get('min');
+        const max = this.props_.get('max');
+        const points = [];
+        this.value.rawValue.forEach((v, index)=>{
+            if (v === undefined) {
+                return;
+            }
+            const x = mapRange(index, 0, maxIndex, 0, w);
+            const y = mapRange(v, min, max, h, 0);
+            points.push([
+                x,
+                y
+            ].join(','));
         });
-    }
-    exportProps() {
-        return exportBladeState(null, {
-            max: this.props.get('max'),
-            min: this.props.get('min')
-        });
-    }
-    onGraphMouseLeave_() {
-        this.cursor_.rawValue = -1;
-    }
-    onGraphMouseMove_(ev) {
-        const bounds = this.view.element.getBoundingClientRect();
-        this.cursor_.rawValue = Math.floor(mapRange(ev.offsetX, 0, bounds.width, 0, this.value.rawValue.length));
-    }
-    onGraphPointerDown_(ev) {
-        this.onGraphPointerMove_(ev);
-    }
-    onGraphPointerMove_(ev) {
-        if (!ev.data.point) {
-            this.cursor_.rawValue = -1;
+        this.lineElem_.setAttributeNS(null, 'points', points.join(' '));
+        const tooltipElem = this.tooltipElem_;
+        const value = this.value.rawValue[this.cursor_.rawValue];
+        if (value === undefined) {
+            tooltipElem.classList.remove(cn$1('t', 'a'));
             return;
         }
-        this.cursor_.rawValue = Math.floor(mapRange(ev.data.point.x, 0, ev.data.bounds.width, 0, this.value.rawValue.length));
+        const tx = mapRange(this.cursor_.rawValue, 0, maxIndex, 0, w);
+        const ty = mapRange(value, min, max, h, 0);
+        tooltipElem.style.left = `${tx}px`;
+        tooltipElem.style.top = `${ty}px`;
+        tooltipElem.textContent = `${this.formatter_(value)}`;
+        if (!tooltipElem.classList.contains(cn$1('t', 'a'))) {
+            tooltipElem.classList.add(cn$1('t', 'a'), cn$1('t', 'in'));
+            forceReflow(tooltipElem);
+            tooltipElem.classList.remove(cn$1('t', 'in'));
+        }
     }
-    onGraphPointerUp_() {
-        this.cursor_.rawValue = -1;
+    onValueUpdate_() {
+        this.update_();
     }
+    onCursorChange_() {
+        this.update_();
+    }
+}
+class GraphLogController {
     constructor(doc, config){
         this.onGraphMouseMove_ = this.onGraphMouseMove_.bind(this);
         this.onGraphMouseLeave_ = this.onGraphMouseLeave_.bind(this);
@@ -6974,6 +6981,42 @@ class GraphLogController {
             ph.emitter.on('move', this.onGraphPointerMove_);
             ph.emitter.on('up', this.onGraphPointerUp_);
         }
+    }
+    importProps(state) {
+        return importBladeState(state, null, (p)=>({
+                max: p.required.number,
+                min: p.required.number
+            }), (result)=>{
+            this.props.set('max', result.max);
+            this.props.set('min', result.min);
+            return true;
+        });
+    }
+    exportProps() {
+        return exportBladeState(null, {
+            max: this.props.get('max'),
+            min: this.props.get('min')
+        });
+    }
+    onGraphMouseLeave_() {
+        this.cursor_.rawValue = -1;
+    }
+    onGraphMouseMove_(ev) {
+        const { clientWidth: w } = this.view.element;
+        this.cursor_.rawValue = Math.floor(mapRange(ev.offsetX, 0, w, 0, this.value.rawValue.length));
+    }
+    onGraphPointerDown_(ev) {
+        this.onGraphPointerMove_(ev);
+    }
+    onGraphPointerMove_(ev) {
+        if (!ev.data.point) {
+            this.cursor_.rawValue = -1;
+            return;
+        }
+        this.cursor_.rawValue = Math.floor(mapRange(ev.data.point.x, 0, ev.data.bounds.width, 0, this.value.rawValue.length));
+    }
+    onGraphPointerUp_() {
+        this.cursor_.rawValue = -1;
     }
 }
 function createFormatter(params) {
@@ -7088,6 +7131,9 @@ const StringMonitorPlugin = createPlugin({
     }
 });
 class BladeApiCache {
+    constructor(){
+        this.map_ = new Map();
+    }
     get(bc) {
         var _a;
         return (_a = this.map_.get(bc)) !== null && _a !== void 0 ? _a : null;
@@ -7102,11 +7148,13 @@ class BladeApiCache {
         });
         return api;
     }
-    constructor(){
-        this.map_ = new Map();
-    }
 }
 class ReadWriteBinding {
+    constructor(config){
+        this.target = config.target;
+        this.reader_ = config.reader;
+        this.writer_ = config.writer;
+    }
     read() {
         return this.reader_(this.target.read());
     }
@@ -7115,11 +7163,6 @@ class ReadWriteBinding {
     }
     inject(value) {
         this.write(this.reader_(value));
-    }
-    constructor(config){
-        this.target = config.target;
-        this.reader_ = config.reader;
-        this.writer_ = config.writer;
     }
 }
 function createInputBindingController(plugin, args) {
@@ -7172,12 +7215,12 @@ function createInputBindingController(plugin, args) {
     });
 }
 class ReadonlyBinding {
-    read() {
-        return this.reader_(this.target.read());
-    }
     constructor(config){
         this.target = config.target;
         this.reader_ = config.reader;
+    }
+    read() {
+        return this.reader_(this.target.read());
     }
 }
 function createTicker(document, interval) {
@@ -7234,6 +7277,14 @@ function createMonitorBindingController(plugin, args) {
     });
 }
 class PluginPool {
+    constructor(apiCache){
+        this.pluginsMap_ = {
+            blades: [],
+            inputs: [],
+            monitors: []
+        };
+        this.apiCache_ = apiCache;
+    }
     getAll() {
         return [
             ...this.pluginsMap_.blades,
@@ -7359,14 +7410,6 @@ class PluginPool {
         }
         return this.apiCache_.add(bc, api);
     }
-    constructor(apiCache){
-        this.pluginsMap_ = {
-            blades: [],
-            inputs: [],
-            monitors: []
-        };
-        this.apiCache_ = apiCache;
-    }
 }
 const sharedCache = new BladeApiCache();
 function createDefaultPluginPool() {
@@ -7393,6 +7436,15 @@ function createDefaultPluginPool() {
     return pool;
 }
 class ListBladeApi extends BladeApi {
+    /**
+     * @hidden
+     */ constructor(controller){
+        super(controller);
+        this.emitter_ = new Emitter();
+        this.controller.value.emitter.on('change', (ev)=>{
+            this.emitter_.emit('change', new TpChangeEvent(this, ev.rawValue));
+        });
+    }
     get label() {
         return this.controller.labelController.props.get('label');
     }
@@ -7415,9 +7467,19 @@ class ListBladeApi extends BladeApi {
         const bh = handler.bind(this);
         this.emitter_.on(eventName, (ev)=>{
             bh(ev);
+        }, {
+            key: handler
         });
         return this;
     }
+    off(eventName, handler) {
+        this.emitter_.off(eventName, handler);
+        return this;
+    }
+}
+class SeparatorBladeApi extends BladeApi {
+}
+class SliderBladeApi extends BladeApi {
     /**
      * @hidden
      */ constructor(controller){
@@ -7427,10 +7489,6 @@ class ListBladeApi extends BladeApi {
             this.emitter_.emit('change', new TpChangeEvent(this, ev.rawValue));
         });
     }
-}
-class SeparatorBladeApi extends BladeApi {
-}
-class SliderBladeApi extends BladeApi {
     get label() {
         return this.controller.labelController.props.get('label');
     }
@@ -7459,9 +7517,17 @@ class SliderBladeApi extends BladeApi {
         const bh = handler.bind(this);
         this.emitter_.on(eventName, (ev)=>{
             bh(ev);
+        }, {
+            key: handler
         });
         return this;
     }
+    off(eventName, handler) {
+        this.emitter_.off(eventName, handler);
+        return this;
+    }
+}
+class TextBladeApi extends BladeApi {
     /**
      * @hidden
      */ constructor(controller){
@@ -7471,8 +7537,6 @@ class SliderBladeApi extends BladeApi {
             this.emitter_.emit('change', new TpChangeEvent(this, ev.rawValue));
         });
     }
-}
-class TextBladeApi extends BladeApi {
     get label() {
         return this.controller.labelController.props.get('label');
     }
@@ -7495,17 +7559,14 @@ class TextBladeApi extends BladeApi {
         const bh = handler.bind(this);
         this.emitter_.on(eventName, (ev)=>{
             bh(ev);
+        }, {
+            key: handler
         });
         return this;
     }
-    /**
-     * @hidden
-     */ constructor(controller){
-        super(controller);
-        this.emitter_ = new Emitter();
-        this.controller.value.emitter.on('change', (ev)=>{
-            this.emitter_.emit('change', new TpChangeEvent(this, ev.rawValue));
-        });
+    off(eventName, handler) {
+        this.emitter_.off(eventName, handler);
+        return this;
     }
 }
 const ListBladePlugin = function() {
@@ -7557,13 +7618,13 @@ const ListBladePlugin = function() {
     };
 }();
 class RootApi extends FolderApi {
-    get element() {
-        return this.controller.view.element;
-    }
     /**
      * @hidden
      */ constructor(controller, pool){
         super(controller, pool);
+    }
+    get element() {
+        return this.controller.view.element;
     }
 }
 /**
@@ -7755,6 +7816,27 @@ function embedStyle(doc, id, css) {
 /**
  * The root pane of Tweakpane.
  */ class Pane extends RootApi {
+    constructor(opt_config){
+        var _a, _b;
+        const config = opt_config !== null && opt_config !== void 0 ? opt_config : {};
+        const doc = (_a = config.document) !== null && _a !== void 0 ? _a : getWindowDocument();
+        const pool = createDefaultPluginPool();
+        const rootController = new RootController(doc, {
+            expanded: config.expanded,
+            blade: createBlade(),
+            props: ValueMap.fromObject({
+                title: config.title
+            }),
+            viewProps: ViewProps.create()
+        });
+        super(rootController, pool);
+        this.pool_ = pool;
+        this.containerElem_ = (_b = config.container) !== null && _b !== void 0 ? _b : createDefaultWrapperElement(doc);
+        this.containerElem_.appendChild(this.element);
+        this.doc_ = doc;
+        this.usesDefaultWrapper_ = !config.container;
+        this.setUpDefaultPlugins_();
+    }
     get document() {
         if (!this.doc_) {
             throw TpError.alreadyDisposed();
@@ -7791,7 +7873,7 @@ function embedStyle(doc, id, css) {
         this.registerPlugin({
             id: 'default',
             // NOTE: This string literal will be replaced with the default CSS by Rollup at the compilation time
-            css: '.tp-tbiv_b,.tp-coltxtv_ms,.tp-colswv_b,.tp-ckbv_i,.tp-sglv_i,.tp-mllv_i,.tp-grlv_g,.tp-txtv_i,.tp-p2dpv_p,.tp-colswv_sw,.tp-rotv_b,.tp-fldv_b,.tp-p2dv_b,.tp-btnv_b,.tp-lstv_s{-webkit-appearance:none;-moz-appearance:none;appearance:none;background-color:rgba(0,0,0,0);border-width:0;font-family:inherit;font-size:inherit;font-weight:inherit;margin:0;outline:none;padding:0}.tp-p2dv_b,.tp-btnv_b,.tp-lstv_s{background-color:var(--btn-bg);border-radius:var(--bld-br);color:var(--btn-fg);cursor:pointer;display:block;font-weight:bold;height:var(--cnt-usz);line-height:var(--cnt-usz);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tp-p2dv_b:hover,.tp-btnv_b:hover,.tp-lstv_s:hover{background-color:var(--btn-bg-h)}.tp-p2dv_b:focus,.tp-btnv_b:focus,.tp-lstv_s:focus{background-color:var(--btn-bg-f)}.tp-p2dv_b:active,.tp-btnv_b:active,.tp-lstv_s:active{background-color:var(--btn-bg-a)}.tp-p2dv_b:disabled,.tp-btnv_b:disabled,.tp-lstv_s:disabled{opacity:.5}.tp-rotv_c>.tp-cntv.tp-v-lst,.tp-tbpv_c>.tp-cntv.tp-v-lst,.tp-fldv_c>.tp-cntv.tp-v-lst{margin-bottom:calc(-1 * var(--cnt-vp))}.tp-rotv_c>.tp-fldv.tp-v-lst .tp-fldv_c,.tp-tbpv_c>.tp-fldv.tp-v-lst .tp-fldv_c,.tp-fldv_c>.tp-fldv.tp-v-lst .tp-fldv_c{border-bottom-left-radius:0}.tp-rotv_c>.tp-fldv.tp-v-lst .tp-fldv_b,.tp-tbpv_c>.tp-fldv.tp-v-lst .tp-fldv_b,.tp-fldv_c>.tp-fldv.tp-v-lst .tp-fldv_b{border-bottom-left-radius:0}.tp-rotv_c>*:not(.tp-v-fst),.tp-tbpv_c>*:not(.tp-v-fst),.tp-fldv_c>*:not(.tp-v-fst){margin-top:var(--cnt-usp)}.tp-rotv_c>.tp-sprv:not(.tp-v-fst),.tp-tbpv_c>.tp-sprv:not(.tp-v-fst),.tp-fldv_c>.tp-sprv:not(.tp-v-fst),.tp-rotv_c>.tp-cntv:not(.tp-v-fst),.tp-tbpv_c>.tp-cntv:not(.tp-v-fst),.tp-fldv_c>.tp-cntv:not(.tp-v-fst){margin-top:var(--cnt-vp)}.tp-rotv_c>.tp-sprv+*:not(.tp-v-hidden),.tp-tbpv_c>.tp-sprv+*:not(.tp-v-hidden),.tp-fldv_c>.tp-sprv+*:not(.tp-v-hidden),.tp-rotv_c>.tp-cntv+*:not(.tp-v-hidden),.tp-tbpv_c>.tp-cntv+*:not(.tp-v-hidden),.tp-fldv_c>.tp-cntv+*:not(.tp-v-hidden){margin-top:var(--cnt-vp)}.tp-rotv_c>.tp-sprv:not(.tp-v-hidden)+.tp-sprv,.tp-tbpv_c>.tp-sprv:not(.tp-v-hidden)+.tp-sprv,.tp-fldv_c>.tp-sprv:not(.tp-v-hidden)+.tp-sprv,.tp-rotv_c>.tp-cntv:not(.tp-v-hidden)+.tp-cntv,.tp-tbpv_c>.tp-cntv:not(.tp-v-hidden)+.tp-cntv,.tp-fldv_c>.tp-cntv:not(.tp-v-hidden)+.tp-cntv{margin-top:0}.tp-tbpv_c>.tp-cntv,.tp-fldv_c>.tp-cntv{margin-left:4px}.tp-tbpv_c>.tp-fldv>.tp-fldv_b,.tp-fldv_c>.tp-fldv>.tp-fldv_b{border-top-left-radius:var(--bld-br);border-bottom-left-radius:var(--bld-br)}.tp-tbpv_c>.tp-fldv.tp-fldv-expanded>.tp-fldv_b,.tp-fldv_c>.tp-fldv.tp-fldv-expanded>.tp-fldv_b{border-bottom-left-radius:0}.tp-tbpv_c .tp-fldv>.tp-fldv_c,.tp-fldv_c .tp-fldv>.tp-fldv_c{border-bottom-left-radius:var(--bld-br)}.tp-tbpv_c>.tp-cntv+.tp-fldv>.tp-fldv_b,.tp-fldv_c>.tp-cntv+.tp-fldv>.tp-fldv_b{border-top-left-radius:0}.tp-tbpv_c>.tp-cntv+.tp-tabv>.tp-tabv_t,.tp-fldv_c>.tp-cntv+.tp-tabv>.tp-tabv_t{border-top-left-radius:0}.tp-tbpv_c>.tp-tabv>.tp-tabv_t,.tp-fldv_c>.tp-tabv>.tp-tabv_t{border-top-left-radius:var(--bld-br)}.tp-tbpv_c .tp-tabv>.tp-tabv_c,.tp-fldv_c .tp-tabv>.tp-tabv_c{border-bottom-left-radius:var(--bld-br)}.tp-rotv_b,.tp-fldv_b{background-color:var(--cnt-bg);color:var(--cnt-fg);cursor:pointer;display:block;height:calc(var(--cnt-usz) + 4px);line-height:calc(var(--cnt-usz) + 4px);overflow:hidden;padding-left:var(--cnt-hp);padding-right:calc(		2px * 2 + var(--cnt-usz) + var(--cnt-hp)	);position:relative;text-align:left;text-overflow:ellipsis;white-space:nowrap;width:100%;transition:border-radius .2s ease-in-out .2s}.tp-rotv_b:hover,.tp-fldv_b:hover{background-color:var(--cnt-bg-h)}.tp-rotv_b:focus,.tp-fldv_b:focus{background-color:var(--cnt-bg-f)}.tp-rotv_b:active,.tp-fldv_b:active{background-color:var(--cnt-bg-a)}.tp-rotv_b:disabled,.tp-fldv_b:disabled{opacity:.5}.tp-rotv_m,.tp-fldv_m{background:linear-gradient(to left, var(--cnt-fg), var(--cnt-fg) 2px, transparent 2px, transparent 4px, var(--cnt-fg) 4px);border-radius:2px;bottom:0;content:"";display:block;height:6px;right:calc(		var(--cnt-hp) + (				var(--cnt-usz) + 4px - 6px			) / 2 - 2px	);margin:auto;opacity:.5;position:absolute;top:0;transform:rotate(90deg);transition:transform .2s ease-in-out;width:6px}.tp-rotv.tp-rotv-expanded .tp-rotv_m,.tp-fldv.tp-fldv-expanded>.tp-fldv_b>.tp-fldv_m{transform:none}.tp-rotv_c,.tp-fldv_c{box-sizing:border-box;height:0;opacity:0;overflow:hidden;padding-bottom:0;padding-top:0;position:relative;transition:height .2s ease-in-out,opacity .2s linear,padding .2s ease-in-out}.tp-rotv.tp-rotv-cpl:not(.tp-rotv-expanded) .tp-rotv_c,.tp-fldv.tp-fldv-cpl:not(.tp-fldv-expanded)>.tp-fldv_c{display:none}.tp-rotv.tp-rotv-expanded .tp-rotv_c,.tp-fldv.tp-fldv-expanded>.tp-fldv_c{opacity:1;padding-bottom:var(--cnt-vp);padding-top:var(--cnt-vp);transform:none;overflow:visible;transition:height .2s ease-in-out,opacity .2s linear .2s,padding .2s ease-in-out}.tp-txtv_i,.tp-p2dpv_p,.tp-colswv_sw{background-color:var(--in-bg);border-radius:var(--bld-br);box-sizing:border-box;color:var(--in-fg);font-family:inherit;height:var(--cnt-usz);line-height:var(--cnt-usz);min-width:0;width:100%}.tp-txtv_i:hover,.tp-p2dpv_p:hover,.tp-colswv_sw:hover{background-color:var(--in-bg-h)}.tp-txtv_i:focus,.tp-p2dpv_p:focus,.tp-colswv_sw:focus{background-color:var(--in-bg-f)}.tp-txtv_i:active,.tp-p2dpv_p:active,.tp-colswv_sw:active{background-color:var(--in-bg-a)}.tp-txtv_i:disabled,.tp-p2dpv_p:disabled,.tp-colswv_sw:disabled{opacity:.5}.tp-lstv,.tp-coltxtv_m{position:relative}.tp-lstv_s{padding:0 20px 0 4px;width:100%}.tp-lstv_m,.tp-coltxtv_mm{bottom:0;margin:auto;pointer-events:none;position:absolute;right:2px;top:0}.tp-lstv_m svg,.tp-coltxtv_mm svg{bottom:0;height:16px;margin:auto;position:absolute;right:0;top:0;width:16px}.tp-lstv_m svg path,.tp-coltxtv_mm svg path{fill:currentColor}.tp-sglv_i,.tp-mllv_i,.tp-grlv_g{background-color:var(--mo-bg);border-radius:var(--bld-br);box-sizing:border-box;color:var(--mo-fg);height:var(--cnt-usz);scrollbar-color:currentColor rgba(0,0,0,0);scrollbar-width:thin;width:100%}.tp-sglv_i::-webkit-scrollbar,.tp-mllv_i::-webkit-scrollbar,.tp-grlv_g::-webkit-scrollbar{height:8px;width:8px}.tp-sglv_i::-webkit-scrollbar-corner,.tp-mllv_i::-webkit-scrollbar-corner,.tp-grlv_g::-webkit-scrollbar-corner{background-color:rgba(0,0,0,0)}.tp-sglv_i::-webkit-scrollbar-thumb,.tp-mllv_i::-webkit-scrollbar-thumb,.tp-grlv_g::-webkit-scrollbar-thumb{background-clip:padding-box;background-color:currentColor;border:rgba(0,0,0,0) solid 2px;border-radius:4px}.tp-pndtxtv,.tp-coltxtv_w{display:flex}.tp-pndtxtv_a,.tp-coltxtv_c{width:100%}.tp-pndtxtv_a+.tp-pndtxtv_a,.tp-coltxtv_c+.tp-pndtxtv_a,.tp-pndtxtv_a+.tp-coltxtv_c,.tp-coltxtv_c+.tp-coltxtv_c{margin-left:2px}.tp-rotv{--bs-bg: var(--tp-base-background-color, hsl(230, 7%, 17%));--bs-br: var(--tp-base-border-radius, 6px);--bs-ff: var(--tp-base-font-family, Roboto Mono, Source Code Pro, Menlo, Courier, monospace);--bs-sh: var(--tp-base-shadow-color, rgba(0, 0, 0, 0.2));--bld-br: var(--tp-blade-border-radius, 2px);--bld-hp: var(--tp-blade-horizontal-padding, 4px);--bld-vw: var(--tp-blade-value-width, 160px);--btn-bg: var(--tp-button-background-color, hsl(230, 7%, 70%));--btn-bg-a: var(--tp-button-background-color-active, #d6d7db);--btn-bg-f: var(--tp-button-background-color-focus, #c8cad0);--btn-bg-h: var(--tp-button-background-color-hover, #bbbcc4);--btn-fg: var(--tp-button-foreground-color, hsl(230, 7%, 17%));--cnt-bg: var(--tp-container-background-color, rgba(187, 188, 196, 0.1));--cnt-bg-a: var(--tp-container-background-color-active, rgba(187, 188, 196, 0.25));--cnt-bg-f: var(--tp-container-background-color-focus, rgba(187, 188, 196, 0.2));--cnt-bg-h: var(--tp-container-background-color-hover, rgba(187, 188, 196, 0.15));--cnt-fg: var(--tp-container-foreground-color, hsl(230, 7%, 75%));--cnt-hp: var(--tp-container-horizontal-padding, 4px);--cnt-vp: var(--tp-container-vertical-padding, 4px);--cnt-usp: var(--tp-container-unit-spacing, 4px);--cnt-usz: var(--tp-container-unit-size, 20px);--in-bg: var(--tp-input-background-color, rgba(187, 188, 196, 0.1));--in-bg-a: var(--tp-input-background-color-active, rgba(187, 188, 196, 0.25));--in-bg-f: var(--tp-input-background-color-focus, rgba(187, 188, 196, 0.2));--in-bg-h: var(--tp-input-background-color-hover, rgba(187, 188, 196, 0.15));--in-fg: var(--tp-input-foreground-color, hsl(230, 7%, 75%));--lbl-fg: var(--tp-label-foreground-color, rgba(187, 188, 196, 0.7));--mo-bg: var(--tp-monitor-background-color, rgba(0, 0, 0, 0.2));--mo-fg: var(--tp-monitor-foreground-color, rgba(187, 188, 196, 0.7));--grv-fg: var(--tp-groove-foreground-color, rgba(187, 188, 196, 0.1))}.tp-btnv_b{width:100%}.tp-btnv_t{text-align:center}.tp-ckbv_l{display:block;position:relative}.tp-ckbv_i{left:0;opacity:0;position:absolute;top:0}.tp-ckbv_w{background-color:var(--in-bg);border-radius:var(--bld-br);cursor:pointer;display:block;height:var(--cnt-usz);position:relative;width:var(--cnt-usz)}.tp-ckbv_w svg{bottom:0;display:block;height:16px;left:0;margin:auto;opacity:0;position:absolute;right:0;top:0;width:16px}.tp-ckbv_w svg path{fill:none;stroke:var(--in-fg);stroke-width:2}.tp-ckbv_i:hover+.tp-ckbv_w{background-color:var(--in-bg-h)}.tp-ckbv_i:focus+.tp-ckbv_w{background-color:var(--in-bg-f)}.tp-ckbv_i:active+.tp-ckbv_w{background-color:var(--in-bg-a)}.tp-ckbv_i:checked+.tp-ckbv_w svg{opacity:1}.tp-ckbv.tp-v-disabled .tp-ckbv_w{opacity:.5}.tp-colv{position:relative}.tp-colv_h{display:flex}.tp-colv_s{flex-grow:0;flex-shrink:0;width:var(--cnt-usz)}.tp-colv_t{flex:1;margin-left:4px}.tp-colv_p{height:0;margin-top:0;opacity:0;overflow:hidden;transition:height .2s ease-in-out,opacity .2s linear,margin .2s ease-in-out}.tp-colv.tp-colv-expanded.tp-colv-cpl .tp-colv_p{overflow:visible}.tp-colv.tp-colv-expanded .tp-colv_p{margin-top:var(--cnt-usp);opacity:1}.tp-colv .tp-popv{left:calc(-1 * var(--cnt-hp));right:calc(-1 * var(--cnt-hp));top:var(--cnt-usz)}.tp-colpv_h,.tp-colpv_ap{margin-left:6px;margin-right:6px}.tp-colpv_h{margin-top:var(--cnt-usp)}.tp-colpv_rgb{display:flex;margin-top:var(--cnt-usp);width:100%}.tp-colpv_a{display:flex;margin-top:var(--cnt-vp);padding-top:calc(			var(--cnt-vp) + 2px		);position:relative}.tp-colpv_a::before{background-color:var(--grv-fg);content:"";height:2px;left:calc(-1 * var(--cnt-hp));position:absolute;right:calc(-1 * var(--cnt-hp));top:0}.tp-colpv.tp-v-disabled .tp-colpv_a::before{opacity:.5}.tp-colpv_ap{align-items:center;display:flex;flex:3}.tp-colpv_at{flex:1;margin-left:4px}.tp-svpv{border-radius:var(--bld-br);outline:none;overflow:hidden;position:relative}.tp-svpv.tp-v-disabled{opacity:.5}.tp-svpv_c{cursor:crosshair;display:block;height:calc(var(--cnt-usz)*4);width:100%}.tp-svpv_m{border-radius:100%;border:rgba(255,255,255,.75) solid 2px;box-sizing:border-box;filter:drop-shadow(0 0 1px rgba(0, 0, 0, 0.3));height:12px;margin-left:-6px;margin-top:-6px;pointer-events:none;position:absolute;width:12px}.tp-svpv:focus .tp-svpv_m{border-color:#fff}.tp-hplv{cursor:pointer;height:var(--cnt-usz);outline:none;position:relative}.tp-hplv.tp-v-disabled{opacity:.5}.tp-hplv_c{background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAABCAYAAABubagXAAAAQ0lEQVQoU2P8z8Dwn0GCgQEDi2OK/RBgYHjBgIpfovFh8j8YBIgzFGQxuqEgPhaDOT5gOhPkdCxOZeBg+IDFZZiGAgCaSSMYtcRHLgAAAABJRU5ErkJggg==);background-position:left top;background-repeat:no-repeat;background-size:100% 100%;border-radius:2px;display:block;height:4px;left:0;margin-top:-2px;position:absolute;top:50%;width:100%}.tp-hplv_m{border-radius:var(--bld-br);border:rgba(255,255,255,.75) solid 2px;box-shadow:0 0 2px rgba(0,0,0,.1);box-sizing:border-box;height:12px;left:50%;margin-left:-6px;margin-top:-6px;pointer-events:none;position:absolute;top:50%;width:12px}.tp-hplv:focus .tp-hplv_m{border-color:#fff}.tp-aplv{cursor:pointer;height:var(--cnt-usz);outline:none;position:relative;width:100%}.tp-aplv.tp-v-disabled{opacity:.5}.tp-aplv_b{background-color:#fff;background-image:linear-gradient(to top right, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%),linear-gradient(to top right, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%);background-size:4px 4px;background-position:0 0,2px 2px;border-radius:2px;display:block;height:4px;left:0;margin-top:-2px;overflow:hidden;position:absolute;top:50%;width:100%}.tp-aplv_c{bottom:0;left:0;position:absolute;right:0;top:0}.tp-aplv_m{background-color:#fff;background-image:linear-gradient(to top right, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%),linear-gradient(to top right, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%);background-size:12px 12px;background-position:0 0,6px 6px;border-radius:var(--bld-br);box-shadow:0 0 2px rgba(0,0,0,.1);height:12px;left:50%;margin-left:-6px;margin-top:-6px;overflow:hidden;pointer-events:none;position:absolute;top:50%;width:12px}.tp-aplv_p{border-radius:var(--bld-br);border:rgba(255,255,255,.75) solid 2px;box-sizing:border-box;bottom:0;left:0;position:absolute;right:0;top:0}.tp-aplv:focus .tp-aplv_p{border-color:#fff}.tp-colswv{background-color:#fff;background-image:linear-gradient(to top right, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%),linear-gradient(to top right, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%);background-size:10px 10px;background-position:0 0,5px 5px;border-radius:var(--bld-br);overflow:hidden}.tp-colswv.tp-v-disabled{opacity:.5}.tp-colswv_sw{border-radius:0}.tp-colswv_b{cursor:pointer;display:block;height:var(--cnt-usz);left:0;position:absolute;top:0;width:var(--cnt-usz)}.tp-colswv_b:focus::after{border:rgba(255,255,255,.75) solid 2px;border-radius:var(--bld-br);bottom:0;content:"";display:block;left:0;position:absolute;right:0;top:0}.tp-coltxtv{display:flex;width:100%}.tp-coltxtv_m{margin-right:4px}.tp-coltxtv_ms{border-radius:var(--bld-br);color:var(--lbl-fg);cursor:pointer;height:var(--cnt-usz);line-height:var(--cnt-usz);padding:0 18px 0 4px}.tp-coltxtv_ms:hover{background-color:var(--in-bg-h)}.tp-coltxtv_ms:focus{background-color:var(--in-bg-f)}.tp-coltxtv_ms:active{background-color:var(--in-bg-a)}.tp-coltxtv_mm{color:var(--lbl-fg)}.tp-coltxtv.tp-v-disabled .tp-coltxtv_mm{opacity:.5}.tp-coltxtv_w{flex:1}.tp-dfwv{position:absolute;top:8px;right:8px;width:256px}.tp-fldv{position:relative}.tp-fldv_t{padding-left:4px}.tp-fldv_b:disabled .tp-fldv_m{display:none}.tp-fldv_c{padding-left:4px}.tp-fldv_i{bottom:0;color:var(--cnt-bg);left:0;overflow:hidden;position:absolute;top:calc(var(--cnt-usz) + 4px);width:max(var(--bs-br),4px)}.tp-fldv_i::before{background-color:currentColor;bottom:0;content:"";left:0;position:absolute;top:0;width:4px}.tp-fldv_b:hover+.tp-fldv_i{color:var(--cnt-bg-h)}.tp-fldv_b:focus+.tp-fldv_i{color:var(--cnt-bg-f)}.tp-fldv_b:active+.tp-fldv_i{color:var(--cnt-bg-a)}.tp-fldv.tp-v-disabled>.tp-fldv_i{opacity:.5}.tp-grlv{position:relative}.tp-grlv_g{display:block;height:calc(var(--cnt-usz) * 3)}.tp-grlv_g polyline{fill:none;stroke:var(--mo-fg);stroke-linejoin:round}.tp-grlv_t{margin-top:-4px;transition:left .05s,top .05s;visibility:hidden}.tp-grlv_t.tp-grlv_t-a{visibility:visible}.tp-grlv_t.tp-grlv_t-in{transition:none}.tp-grlv.tp-v-disabled .tp-grlv_g{opacity:.5}.tp-grlv .tp-ttv{background-color:var(--mo-fg)}.tp-grlv .tp-ttv::before{border-top-color:var(--mo-fg)}.tp-lblv{align-items:center;display:flex;line-height:1.3;padding-left:var(--cnt-hp);padding-right:var(--cnt-hp)}.tp-lblv.tp-lblv-nol{display:block}.tp-lblv_l{color:var(--lbl-fg);flex:1;-webkit-hyphens:auto;hyphens:auto;overflow:hidden;padding-left:4px;padding-right:16px}.tp-lblv.tp-v-disabled .tp-lblv_l{opacity:.5}.tp-lblv.tp-lblv-nol .tp-lblv_l{display:none}.tp-lblv_v{align-self:flex-start;flex-grow:0;flex-shrink:0;width:var(--bld-vw)}.tp-lblv.tp-lblv-nol .tp-lblv_v{width:100%}.tp-lstv_s{padding:0 20px 0 var(--bld-hp);width:100%}.tp-lstv_m{color:var(--btn-fg)}.tp-sglv_i{padding-left:var(--bld-hp);padding-right:var(--bld-hp)}.tp-sglv.tp-v-disabled .tp-sglv_i{opacity:.5}.tp-mllv_i{display:block;height:calc(var(--cnt-usz) * 3);line-height:var(--cnt-usz);padding-left:var(--bld-hp);padding-right:var(--bld-hp);resize:none;white-space:pre}.tp-mllv.tp-v-disabled .tp-mllv_i{opacity:.5}.tp-p2dv{position:relative}.tp-p2dv_h{display:flex}.tp-p2dv_b{height:var(--cnt-usz);margin-right:4px;position:relative;width:var(--cnt-usz)}.tp-p2dv_b svg{display:block;height:16px;left:50%;margin-left:-8px;margin-top:-8px;position:absolute;top:50%;width:16px}.tp-p2dv_b svg path{stroke:currentColor;stroke-width:2}.tp-p2dv_b svg circle{fill:currentColor}.tp-p2dv_t{flex:1}.tp-p2dv_p{height:0;margin-top:0;opacity:0;overflow:hidden;transition:height .2s ease-in-out,opacity .2s linear,margin .2s ease-in-out}.tp-p2dv.tp-p2dv-expanded .tp-p2dv_p{margin-top:var(--cnt-usp);opacity:1}.tp-p2dv .tp-popv{left:calc(-1 * var(--cnt-hp));right:calc(-1 * var(--cnt-hp));top:var(--cnt-usz)}.tp-p2dpv{padding-left:calc(var(--cnt-usz) + 4px)}.tp-p2dpv_p{cursor:crosshair;height:0;overflow:hidden;padding-bottom:100%;position:relative}.tp-p2dpv.tp-v-disabled .tp-p2dpv_p{opacity:.5}.tp-p2dpv_g{display:block;height:100%;left:0;pointer-events:none;position:absolute;top:0;width:100%}.tp-p2dpv_ax{opacity:.1;stroke:var(--in-fg);stroke-dasharray:1}.tp-p2dpv_l{opacity:.5;stroke:var(--in-fg);stroke-dasharray:1}.tp-p2dpv_m{border:var(--in-fg) solid 1px;border-radius:50%;box-sizing:border-box;height:4px;margin-left:-2px;margin-top:-2px;position:absolute;width:4px}.tp-p2dpv_p:focus .tp-p2dpv_m{background-color:var(--in-fg);border-width:0}.tp-popv{background-color:var(--bs-bg);border-radius:var(--bs-br);box-shadow:0 2px 4px var(--bs-sh);display:none;max-width:var(--bld-vw);padding:var(--cnt-vp) var(--cnt-hp);position:absolute;visibility:hidden;z-index:1000}.tp-popv.tp-popv-v{display:block;visibility:visible}.tp-sldv.tp-v-disabled{opacity:.5}.tp-sldv_t{box-sizing:border-box;cursor:pointer;height:var(--cnt-usz);margin:0 6px;outline:none;position:relative}.tp-sldv_t::before{background-color:var(--in-bg);border-radius:1px;bottom:0;content:"";display:block;height:2px;left:0;margin:auto;position:absolute;right:0;top:0}.tp-sldv_k{height:100%;left:0;position:absolute;top:0}.tp-sldv_k::before{background-color:var(--in-fg);border-radius:1px;bottom:0;content:"";display:block;height:2px;left:0;margin-bottom:auto;margin-top:auto;position:absolute;right:0;top:0}.tp-sldv_k::after{background-color:var(--btn-bg);border-radius:var(--bld-br);bottom:0;content:"";display:block;height:12px;margin-bottom:auto;margin-top:auto;position:absolute;right:-6px;top:0;width:12px}.tp-sldv_t:hover .tp-sldv_k::after{background-color:var(--btn-bg-h)}.tp-sldv_t:focus .tp-sldv_k::after{background-color:var(--btn-bg-f)}.tp-sldv_t:active .tp-sldv_k::after{background-color:var(--btn-bg-a)}.tp-sldtxtv{display:flex}.tp-sldtxtv_s{flex:2}.tp-sldtxtv_t{flex:1;margin-left:4px}.tp-tabv{position:relative}.tp-tabv_t{align-items:flex-end;color:var(--cnt-bg);display:flex;overflow:hidden;position:relative}.tp-tabv_t:hover{color:var(--cnt-bg-h)}.tp-tabv_t:has(*:focus){color:var(--cnt-bg-f)}.tp-tabv_t:has(*:active){color:var(--cnt-bg-a)}.tp-tabv_t::before{background-color:currentColor;bottom:0;content:"";height:2px;left:0;pointer-events:none;position:absolute;right:0}.tp-tabv.tp-v-disabled .tp-tabv_t::before{opacity:.5}.tp-tabv.tp-tabv-nop .tp-tabv_t{height:calc(var(--cnt-usz) + 4px);position:relative}.tp-tabv.tp-tabv-nop .tp-tabv_t::before{background-color:var(--cnt-bg);bottom:0;content:"";height:2px;left:0;position:absolute;right:0}.tp-tabv_i{bottom:0;color:var(--cnt-bg);left:0;overflow:hidden;position:absolute;top:calc(var(--cnt-usz) + 4px);width:max(var(--bs-br),4px)}.tp-tabv_i::before{background-color:currentColor;bottom:0;content:"";left:0;position:absolute;top:0;width:4px}.tp-tabv_t:hover+.tp-tabv_i{color:var(--cnt-bg-h)}.tp-tabv_t:has(*:focus)+.tp-tabv_i{color:var(--cnt-bg-f)}.tp-tabv_t:has(*:active)+.tp-tabv_i{color:var(--cnt-bg-a)}.tp-tabv.tp-v-disabled>.tp-tabv_i{opacity:.5}.tp-tbiv{flex:1;min-width:0;position:relative}.tp-tbiv+.tp-tbiv{margin-left:2px}.tp-tbiv+.tp-tbiv.tp-v-disabled::before{opacity:.5}.tp-tbiv_b{display:block;padding-left:calc(var(--cnt-hp) + 4px);padding-right:calc(var(--cnt-hp) + 4px);position:relative;width:100%}.tp-tbiv_b:disabled{opacity:.5}.tp-tbiv_b::before{background-color:var(--cnt-bg);bottom:2px;content:"";left:0;pointer-events:none;position:absolute;right:0;top:0}.tp-tbiv_b:hover::before{background-color:var(--cnt-bg-h)}.tp-tbiv_b:focus::before{background-color:var(--cnt-bg-f)}.tp-tbiv_b:active::before{background-color:var(--cnt-bg-a)}.tp-tbiv_t{color:var(--cnt-fg);height:calc(var(--cnt-usz) + 4px);line-height:calc(var(--cnt-usz) + 4px);opacity:.5;overflow:hidden;text-overflow:ellipsis}.tp-tbiv.tp-tbiv-sel .tp-tbiv_t{opacity:1}.tp-tbpv_c{padding-bottom:var(--cnt-vp);padding-left:4px;padding-top:var(--cnt-vp)}.tp-txtv{position:relative}.tp-txtv_i{padding-left:var(--bld-hp);padding-right:var(--bld-hp)}.tp-txtv.tp-txtv-fst .tp-txtv_i{border-bottom-right-radius:0;border-top-right-radius:0}.tp-txtv.tp-txtv-mid .tp-txtv_i{border-radius:0}.tp-txtv.tp-txtv-lst .tp-txtv_i{border-bottom-left-radius:0;border-top-left-radius:0}.tp-txtv.tp-txtv-num .tp-txtv_i{text-align:right}.tp-txtv.tp-txtv-drg .tp-txtv_i{opacity:.3}.tp-txtv_k{cursor:pointer;height:100%;left:calc(			var(--bld-hp) - 5px		);position:absolute;top:0;width:12px}.tp-txtv_k::before{background-color:var(--in-fg);border-radius:1px;bottom:0;content:"";height:calc(var(--cnt-usz) - 4px);left:50%;margin-bottom:auto;margin-left:-1px;margin-top:auto;opacity:.1;position:absolute;top:0;transition:border-radius .1s,height .1s,transform .1s,width .1s;width:2px}.tp-txtv_k:hover::before,.tp-txtv.tp-txtv-drg .tp-txtv_k::before{opacity:1}.tp-txtv.tp-txtv-drg .tp-txtv_k::before{border-radius:50%;height:4px;transform:translateX(-1px);width:4px}.tp-txtv_g{bottom:0;display:block;height:8px;left:50%;margin:auto;overflow:visible;pointer-events:none;position:absolute;top:0;visibility:hidden;width:100%}.tp-txtv.tp-txtv-drg .tp-txtv_g{visibility:visible}.tp-txtv_gb{fill:none;stroke:var(--in-fg);stroke-dasharray:1}.tp-txtv_gh{fill:none;stroke:var(--in-fg)}.tp-txtv .tp-ttv{margin-left:6px;visibility:hidden}.tp-txtv.tp-txtv-drg .tp-ttv{visibility:visible}.tp-ttv{background-color:var(--in-fg);border-radius:var(--bld-br);color:var(--bs-bg);padding:2px 4px;pointer-events:none;position:absolute;transform:translate(-50%, -100%)}.tp-ttv::before{border-color:var(--in-fg) rgba(0,0,0,0) rgba(0,0,0,0) rgba(0,0,0,0);border-style:solid;border-width:2px;box-sizing:border-box;content:"";font-size:.9em;height:4px;left:50%;margin-left:-2px;position:absolute;top:100%;width:4px}.tp-rotv{background-color:var(--bs-bg);border-radius:var(--bs-br);box-shadow:0 2px 4px var(--bs-sh);font-family:var(--bs-ff);font-size:11px;font-weight:500;line-height:1;text-align:left}.tp-rotv_b{border-bottom-left-radius:var(--bs-br);border-bottom-right-radius:var(--bs-br);border-top-left-radius:var(--bs-br);border-top-right-radius:var(--bs-br);padding-left:calc(			2px * 2 + var(--cnt-usz) + var(--cnt-hp)		);text-align:center}.tp-rotv.tp-rotv-expanded .tp-rotv_b{border-bottom-left-radius:0;border-bottom-right-radius:0;transition-delay:0s;transition-duration:0s}.tp-rotv.tp-rotv-not>.tp-rotv_b{display:none}.tp-rotv_b:disabled .tp-rotv_m{display:none}.tp-rotv_c>.tp-fldv.tp-v-lst>.tp-fldv_c{border-bottom-left-radius:var(--bs-br);border-bottom-right-radius:var(--bs-br)}.tp-rotv_c>.tp-fldv.tp-v-lst>.tp-fldv_i{border-bottom-left-radius:var(--bs-br)}.tp-rotv_c>.tp-fldv.tp-v-lst:not(.tp-fldv-expanded)>.tp-fldv_b{border-bottom-left-radius:var(--bs-br);border-bottom-right-radius:var(--bs-br)}.tp-rotv_c>.tp-fldv.tp-v-lst.tp-fldv-expanded>.tp-fldv_b{transition-delay:0s;transition-duration:0s}.tp-rotv_c .tp-fldv.tp-v-vlst:not(.tp-fldv-expanded)>.tp-fldv_b{border-bottom-right-radius:var(--bs-br)}.tp-rotv.tp-rotv-not .tp-rotv_c>.tp-fldv.tp-v-fst{margin-top:calc(-1 * var(--cnt-vp))}.tp-rotv.tp-rotv-not .tp-rotv_c>.tp-fldv.tp-v-fst>.tp-fldv_b{border-top-left-radius:var(--bs-br);border-top-right-radius:var(--bs-br)}.tp-rotv_c>.tp-tabv.tp-v-lst>.tp-tabv_c{border-bottom-left-radius:var(--bs-br);border-bottom-right-radius:var(--bs-br)}.tp-rotv_c>.tp-tabv.tp-v-lst>.tp-tabv_i{border-bottom-left-radius:var(--bs-br)}.tp-rotv.tp-rotv-not .tp-rotv_c>.tp-tabv.tp-v-fst{margin-top:calc(-1 * var(--cnt-vp))}.tp-rotv.tp-rotv-not .tp-rotv_c>.tp-tabv.tp-v-fst>.tp-tabv_t{border-top-left-radius:var(--bs-br);border-top-right-radius:var(--bs-br)}.tp-rotv.tp-v-disabled,.tp-rotv .tp-v-disabled{pointer-events:none}.tp-rotv.tp-v-hidden,.tp-rotv .tp-v-hidden{display:none}.tp-sprv_r{background-color:var(--grv-fg);border-width:0;display:block;height:2px;margin:0;width:100%}.tp-sprv.tp-v-disabled .tp-sprv_r{opacity:.5}',
+            css: '.tp-tbiv_b,.tp-coltxtv_ms,.tp-colswv_b,.tp-ckbv_i,.tp-sglv_i,.tp-mllv_i,.tp-grlv_g,.tp-txtv_i,.tp-p2dpv_p,.tp-colswv_sw,.tp-rotv_b,.tp-fldv_b,.tp-p2dv_b,.tp-btnv_b,.tp-lstv_s{-webkit-appearance:none;-moz-appearance:none;appearance:none;background-color:rgba(0,0,0,0);border-width:0;font-family:inherit;font-size:inherit;font-weight:inherit;margin:0;outline:none;padding:0}.tp-p2dv_b,.tp-btnv_b,.tp-lstv_s{background-color:var(--btn-bg);border-radius:var(--bld-br);color:var(--btn-fg);cursor:pointer;display:block;font-weight:bold;height:var(--cnt-usz);line-height:var(--cnt-usz);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tp-p2dv_b:hover,.tp-btnv_b:hover,.tp-lstv_s:hover{background-color:var(--btn-bg-h)}.tp-p2dv_b:focus,.tp-btnv_b:focus,.tp-lstv_s:focus{background-color:var(--btn-bg-f)}.tp-p2dv_b:active,.tp-btnv_b:active,.tp-lstv_s:active{background-color:var(--btn-bg-a)}.tp-p2dv_b:disabled,.tp-btnv_b:disabled,.tp-lstv_s:disabled{opacity:.5}.tp-rotv_c>.tp-cntv.tp-v-lst,.tp-tbpv_c>.tp-cntv.tp-v-lst,.tp-fldv_c>.tp-cntv.tp-v-lst{margin-bottom:calc(-1*var(--cnt-vp))}.tp-rotv_c>.tp-fldv.tp-v-lst .tp-fldv_c,.tp-tbpv_c>.tp-fldv.tp-v-lst .tp-fldv_c,.tp-fldv_c>.tp-fldv.tp-v-lst .tp-fldv_c{border-bottom-left-radius:0}.tp-rotv_c>.tp-fldv.tp-v-lst .tp-fldv_b,.tp-tbpv_c>.tp-fldv.tp-v-lst .tp-fldv_b,.tp-fldv_c>.tp-fldv.tp-v-lst .tp-fldv_b{border-bottom-left-radius:0}.tp-rotv_c>*:not(.tp-v-fst),.tp-tbpv_c>*:not(.tp-v-fst),.tp-fldv_c>*:not(.tp-v-fst){margin-top:var(--cnt-usp)}.tp-rotv_c>.tp-sprv:not(.tp-v-fst),.tp-tbpv_c>.tp-sprv:not(.tp-v-fst),.tp-fldv_c>.tp-sprv:not(.tp-v-fst),.tp-rotv_c>.tp-cntv:not(.tp-v-fst),.tp-tbpv_c>.tp-cntv:not(.tp-v-fst),.tp-fldv_c>.tp-cntv:not(.tp-v-fst){margin-top:var(--cnt-vp)}.tp-rotv_c>.tp-sprv+*:not(.tp-v-hidden),.tp-tbpv_c>.tp-sprv+*:not(.tp-v-hidden),.tp-fldv_c>.tp-sprv+*:not(.tp-v-hidden),.tp-rotv_c>.tp-cntv+*:not(.tp-v-hidden),.tp-tbpv_c>.tp-cntv+*:not(.tp-v-hidden),.tp-fldv_c>.tp-cntv+*:not(.tp-v-hidden){margin-top:var(--cnt-vp)}.tp-rotv_c>.tp-sprv:not(.tp-v-hidden)+.tp-sprv,.tp-tbpv_c>.tp-sprv:not(.tp-v-hidden)+.tp-sprv,.tp-fldv_c>.tp-sprv:not(.tp-v-hidden)+.tp-sprv,.tp-rotv_c>.tp-cntv:not(.tp-v-hidden)+.tp-cntv,.tp-tbpv_c>.tp-cntv:not(.tp-v-hidden)+.tp-cntv,.tp-fldv_c>.tp-cntv:not(.tp-v-hidden)+.tp-cntv{margin-top:0}.tp-tbpv_c>.tp-cntv,.tp-fldv_c>.tp-cntv{margin-left:4px}.tp-tbpv_c>.tp-fldv>.tp-fldv_b,.tp-fldv_c>.tp-fldv>.tp-fldv_b{border-top-left-radius:var(--bld-br);border-bottom-left-radius:var(--bld-br)}.tp-tbpv_c>.tp-fldv.tp-fldv-expanded>.tp-fldv_b,.tp-fldv_c>.tp-fldv.tp-fldv-expanded>.tp-fldv_b{border-bottom-left-radius:0}.tp-tbpv_c .tp-fldv>.tp-fldv_c,.tp-fldv_c .tp-fldv>.tp-fldv_c{border-bottom-left-radius:var(--bld-br)}.tp-tbpv_c>.tp-cntv+.tp-fldv>.tp-fldv_b,.tp-fldv_c>.tp-cntv+.tp-fldv>.tp-fldv_b{border-top-left-radius:0}.tp-tbpv_c>.tp-cntv+.tp-tabv>.tp-tabv_t,.tp-fldv_c>.tp-cntv+.tp-tabv>.tp-tabv_t{border-top-left-radius:0}.tp-tbpv_c>.tp-tabv>.tp-tabv_t,.tp-fldv_c>.tp-tabv>.tp-tabv_t{border-top-left-radius:var(--bld-br)}.tp-tbpv_c .tp-tabv>.tp-tabv_c,.tp-fldv_c .tp-tabv>.tp-tabv_c{border-bottom-left-radius:var(--bld-br)}.tp-rotv_b,.tp-fldv_b{background-color:var(--cnt-bg);color:var(--cnt-fg);cursor:pointer;display:block;height:calc(var(--cnt-usz) + 4px);line-height:calc(var(--cnt-usz) + 4px);overflow:hidden;padding-left:var(--cnt-hp);padding-right:calc(4px + var(--cnt-usz) + var(--cnt-hp));position:relative;text-align:left;text-overflow:ellipsis;white-space:nowrap;width:100%;transition:border-radius .2s ease-in-out .2s}.tp-rotv_b:hover,.tp-fldv_b:hover{background-color:var(--cnt-bg-h)}.tp-rotv_b:focus,.tp-fldv_b:focus{background-color:var(--cnt-bg-f)}.tp-rotv_b:active,.tp-fldv_b:active{background-color:var(--cnt-bg-a)}.tp-rotv_b:disabled,.tp-fldv_b:disabled{opacity:.5}.tp-rotv_m,.tp-fldv_m{background:linear-gradient(to left, var(--cnt-fg), var(--cnt-fg) 2px, transparent 2px, transparent 4px, var(--cnt-fg) 4px);border-radius:2px;bottom:0;content:"";display:block;height:6px;right:calc(var(--cnt-hp) + (var(--cnt-usz) + 4px - 6px)/2 - 2px);margin:auto;opacity:.5;position:absolute;top:0;transform:rotate(90deg);transition:transform .2s ease-in-out;width:6px}.tp-rotv.tp-rotv-expanded .tp-rotv_m,.tp-fldv.tp-fldv-expanded>.tp-fldv_b>.tp-fldv_m{transform:none}.tp-rotv_c,.tp-fldv_c{box-sizing:border-box;height:0;opacity:0;overflow:hidden;padding-bottom:0;padding-top:0;position:relative;transition:height .2s ease-in-out,opacity .2s linear,padding .2s ease-in-out}.tp-rotv.tp-rotv-cpl:not(.tp-rotv-expanded) .tp-rotv_c,.tp-fldv.tp-fldv-cpl:not(.tp-fldv-expanded)>.tp-fldv_c{display:none}.tp-rotv.tp-rotv-expanded .tp-rotv_c,.tp-fldv.tp-fldv-expanded>.tp-fldv_c{opacity:1;padding-bottom:var(--cnt-vp);padding-top:var(--cnt-vp);transform:none;overflow:visible;transition:height .2s ease-in-out,opacity .2s linear .2s,padding .2s ease-in-out}.tp-txtv_i,.tp-p2dpv_p,.tp-colswv_sw{background-color:var(--in-bg);border-radius:var(--bld-br);box-sizing:border-box;color:var(--in-fg);font-family:inherit;height:var(--cnt-usz);line-height:var(--cnt-usz);min-width:0;width:100%}.tp-txtv_i:hover,.tp-p2dpv_p:hover,.tp-colswv_sw:hover{background-color:var(--in-bg-h)}.tp-txtv_i:focus,.tp-p2dpv_p:focus,.tp-colswv_sw:focus{background-color:var(--in-bg-f)}.tp-txtv_i:active,.tp-p2dpv_p:active,.tp-colswv_sw:active{background-color:var(--in-bg-a)}.tp-txtv_i:disabled,.tp-p2dpv_p:disabled,.tp-colswv_sw:disabled{opacity:.5}.tp-lstv,.tp-coltxtv_m{position:relative}.tp-lstv_s{padding:0 20px 0 4px;width:100%}.tp-lstv_m,.tp-coltxtv_mm{bottom:0;margin:auto;pointer-events:none;position:absolute;right:2px;top:0}.tp-lstv_m svg,.tp-coltxtv_mm svg{bottom:0;height:16px;margin:auto;position:absolute;right:0;top:0;width:16px}.tp-lstv_m svg path,.tp-coltxtv_mm svg path{fill:currentColor}.tp-sglv_i,.tp-mllv_i,.tp-grlv_g{background-color:var(--mo-bg);border-radius:var(--bld-br);box-sizing:border-box;color:var(--mo-fg);height:var(--cnt-usz);scrollbar-color:currentColor rgba(0,0,0,0);scrollbar-width:thin;width:100%}.tp-sglv_i::-webkit-scrollbar,.tp-mllv_i::-webkit-scrollbar,.tp-grlv_g::-webkit-scrollbar{height:8px;width:8px}.tp-sglv_i::-webkit-scrollbar-corner,.tp-mllv_i::-webkit-scrollbar-corner,.tp-grlv_g::-webkit-scrollbar-corner{background-color:rgba(0,0,0,0)}.tp-sglv_i::-webkit-scrollbar-thumb,.tp-mllv_i::-webkit-scrollbar-thumb,.tp-grlv_g::-webkit-scrollbar-thumb{background-clip:padding-box;background-color:currentColor;border:rgba(0,0,0,0) solid 2px;border-radius:4px}.tp-pndtxtv,.tp-coltxtv_w{display:flex}.tp-pndtxtv_a,.tp-coltxtv_c{width:100%}.tp-pndtxtv_a+.tp-pndtxtv_a,.tp-coltxtv_c+.tp-pndtxtv_a,.tp-pndtxtv_a+.tp-coltxtv_c,.tp-coltxtv_c+.tp-coltxtv_c{margin-left:2px}.tp-rotv{--bs-bg: var(--tp-base-background-color, hsl(230, 7%, 17%));--bs-br: var(--tp-base-border-radius, 6px);--bs-ff: var(--tp-base-font-family, Roboto Mono, Source Code Pro, Menlo, Courier, monospace);--bs-sh: var(--tp-base-shadow-color, rgba(0, 0, 0, 0.2));--bld-br: var(--tp-blade-border-radius, 2px);--bld-hp: var(--tp-blade-horizontal-padding, 4px);--bld-vw: var(--tp-blade-value-width, 160px);--btn-bg: var(--tp-button-background-color, hsl(230, 7%, 70%));--btn-bg-a: var(--tp-button-background-color-active, #d6d7db);--btn-bg-f: var(--tp-button-background-color-focus, #c8cad0);--btn-bg-h: var(--tp-button-background-color-hover, #bbbcc4);--btn-fg: var(--tp-button-foreground-color, hsl(230, 7%, 17%));--cnt-bg: var(--tp-container-background-color, rgba(187, 188, 196, 0.1));--cnt-bg-a: var(--tp-container-background-color-active, rgba(187, 188, 196, 0.25));--cnt-bg-f: var(--tp-container-background-color-focus, rgba(187, 188, 196, 0.2));--cnt-bg-h: var(--tp-container-background-color-hover, rgba(187, 188, 196, 0.15));--cnt-fg: var(--tp-container-foreground-color, hsl(230, 7%, 75%));--cnt-hp: var(--tp-container-horizontal-padding, 4px);--cnt-vp: var(--tp-container-vertical-padding, 4px);--cnt-usp: var(--tp-container-unit-spacing, 4px);--cnt-usz: var(--tp-container-unit-size, 20px);--in-bg: var(--tp-input-background-color, rgba(187, 188, 196, 0.1));--in-bg-a: var(--tp-input-background-color-active, rgba(187, 188, 196, 0.25));--in-bg-f: var(--tp-input-background-color-focus, rgba(187, 188, 196, 0.2));--in-bg-h: var(--tp-input-background-color-hover, rgba(187, 188, 196, 0.15));--in-fg: var(--tp-input-foreground-color, hsl(230, 7%, 75%));--lbl-fg: var(--tp-label-foreground-color, rgba(187, 188, 196, 0.7));--mo-bg: var(--tp-monitor-background-color, rgba(0, 0, 0, 0.2));--mo-fg: var(--tp-monitor-foreground-color, rgba(187, 188, 196, 0.7));--grv-fg: var(--tp-groove-foreground-color, rgba(187, 188, 196, 0.1))}.tp-btnv_b{width:100%}.tp-btnv_t{text-align:center}.tp-ckbv_l{display:block;position:relative}.tp-ckbv_i{left:0;opacity:0;position:absolute;top:0}.tp-ckbv_w{background-color:var(--in-bg);border-radius:var(--bld-br);cursor:pointer;display:block;height:var(--cnt-usz);position:relative;width:var(--cnt-usz)}.tp-ckbv_w svg{display:block;height:16px;inset:0;margin:auto;opacity:0;position:absolute;width:16px}.tp-ckbv_w svg path{fill:none;stroke:var(--in-fg);stroke-width:2}.tp-ckbv_i:hover+.tp-ckbv_w{background-color:var(--in-bg-h)}.tp-ckbv_i:focus+.tp-ckbv_w{background-color:var(--in-bg-f)}.tp-ckbv_i:active+.tp-ckbv_w{background-color:var(--in-bg-a)}.tp-ckbv_i:checked+.tp-ckbv_w svg{opacity:1}.tp-ckbv.tp-v-disabled .tp-ckbv_w{opacity:.5}.tp-colv{position:relative}.tp-colv_h{display:flex}.tp-colv_s{flex-grow:0;flex-shrink:0;width:var(--cnt-usz)}.tp-colv_t{flex:1;margin-left:4px}.tp-colv_p{height:0;margin-top:0;opacity:0;overflow:hidden;transition:height .2s ease-in-out,opacity .2s linear,margin .2s ease-in-out}.tp-colv.tp-colv-expanded.tp-colv-cpl .tp-colv_p{overflow:visible}.tp-colv.tp-colv-expanded .tp-colv_p{margin-top:var(--cnt-usp);opacity:1}.tp-colv .tp-popv{left:calc(-1*var(--cnt-hp));right:calc(-1*var(--cnt-hp));top:var(--cnt-usz)}.tp-colpv_h,.tp-colpv_ap{margin-left:6px;margin-right:6px}.tp-colpv_h{margin-top:var(--cnt-usp)}.tp-colpv_rgb{display:flex;margin-top:var(--cnt-usp);width:100%}.tp-colpv_a{display:flex;margin-top:var(--cnt-vp);padding-top:calc(var(--cnt-vp) + 2px);position:relative}.tp-colpv_a::before{background-color:var(--grv-fg);content:"";height:2px;left:calc(-1*var(--cnt-hp));position:absolute;right:calc(-1*var(--cnt-hp));top:0}.tp-colpv.tp-v-disabled .tp-colpv_a::before{opacity:.5}.tp-colpv_ap{align-items:center;display:flex;flex:3}.tp-colpv_at{flex:1;margin-left:4px}.tp-svpv{border-radius:var(--bld-br);outline:none;overflow:hidden;position:relative}.tp-svpv.tp-v-disabled{opacity:.5}.tp-svpv_c{cursor:crosshair;display:block;height:calc(var(--cnt-usz)*4);width:100%}.tp-svpv_m{border-radius:100%;border:rgba(255,255,255,.75) solid 2px;box-sizing:border-box;filter:drop-shadow(0 0 1px rgba(0, 0, 0, 0.3));height:12px;margin-left:-6px;margin-top:-6px;pointer-events:none;position:absolute;width:12px}.tp-svpv:focus .tp-svpv_m{border-color:#fff}.tp-hplv{cursor:pointer;height:var(--cnt-usz);outline:none;position:relative}.tp-hplv.tp-v-disabled{opacity:.5}.tp-hplv_c{background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAABCAYAAABubagXAAAAQ0lEQVQoU2P8z8Dwn0GCgQEDi2OK/RBgYHjBgIpfovFh8j8YBIgzFGQxuqEgPhaDOT5gOhPkdCxOZeBg+IDFZZiGAgCaSSMYtcRHLgAAAABJRU5ErkJggg==);background-position:left top;background-repeat:no-repeat;background-size:100% 100%;border-radius:2px;display:block;height:4px;left:0;margin-top:-2px;position:absolute;top:50%;width:100%}.tp-hplv_m{border-radius:var(--bld-br);border:rgba(255,255,255,.75) solid 2px;box-shadow:0 0 2px rgba(0,0,0,.1);box-sizing:border-box;height:12px;left:50%;margin-left:-6px;margin-top:-6px;pointer-events:none;position:absolute;top:50%;width:12px}.tp-hplv:focus .tp-hplv_m{border-color:#fff}.tp-aplv{cursor:pointer;height:var(--cnt-usz);outline:none;position:relative;width:100%}.tp-aplv.tp-v-disabled{opacity:.5}.tp-aplv_b{background-color:#fff;background-image:linear-gradient(to top right, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%),linear-gradient(to top right, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%);background-size:4px 4px;background-position:0 0,2px 2px;border-radius:2px;display:block;height:4px;left:0;margin-top:-2px;overflow:hidden;position:absolute;top:50%;width:100%}.tp-aplv_c{inset:0;position:absolute}.tp-aplv_m{background-color:#fff;background-image:linear-gradient(to top right, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%),linear-gradient(to top right, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%);background-size:12px 12px;background-position:0 0,6px 6px;border-radius:var(--bld-br);box-shadow:0 0 2px rgba(0,0,0,.1);height:12px;left:50%;margin-left:-6px;margin-top:-6px;overflow:hidden;pointer-events:none;position:absolute;top:50%;width:12px}.tp-aplv_p{border-radius:var(--bld-br);border:rgba(255,255,255,.75) solid 2px;box-sizing:border-box;inset:0;position:absolute}.tp-aplv:focus .tp-aplv_p{border-color:#fff}.tp-colswv{background-color:#fff;background-image:linear-gradient(to top right, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%),linear-gradient(to top right, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%);background-size:10px 10px;background-position:0 0,5px 5px;border-radius:var(--bld-br);overflow:hidden}.tp-colswv.tp-v-disabled{opacity:.5}.tp-colswv_sw{border-radius:0}.tp-colswv_b{cursor:pointer;display:block;height:var(--cnt-usz);left:0;position:absolute;top:0;width:var(--cnt-usz)}.tp-colswv_b:focus::after{border:rgba(255,255,255,.75) solid 2px;border-radius:var(--bld-br);content:"";display:block;inset:0;position:absolute}.tp-coltxtv{display:flex;width:100%}.tp-coltxtv_m{margin-right:4px}.tp-coltxtv_ms{border-radius:var(--bld-br);color:var(--lbl-fg);cursor:pointer;height:var(--cnt-usz);line-height:var(--cnt-usz);padding:0 18px 0 4px}.tp-coltxtv_ms:hover{background-color:var(--in-bg-h)}.tp-coltxtv_ms:focus{background-color:var(--in-bg-f)}.tp-coltxtv_ms:active{background-color:var(--in-bg-a)}.tp-coltxtv_mm{color:var(--lbl-fg)}.tp-coltxtv.tp-v-disabled .tp-coltxtv_mm{opacity:.5}.tp-coltxtv_w{flex:1}.tp-dfwv{position:absolute;top:8px;right:8px;width:256px}.tp-fldv{position:relative}.tp-fldv_t{padding-left:4px}.tp-fldv_b:disabled .tp-fldv_m{display:none}.tp-fldv_c{padding-left:4px}.tp-fldv_i{bottom:0;color:var(--cnt-bg);left:0;overflow:hidden;position:absolute;top:calc(var(--cnt-usz) + 4px);width:max(var(--bs-br),4px)}.tp-fldv_i::before{background-color:currentColor;bottom:0;content:"";left:0;position:absolute;top:0;width:4px}.tp-fldv_b:hover+.tp-fldv_i{color:var(--cnt-bg-h)}.tp-fldv_b:focus+.tp-fldv_i{color:var(--cnt-bg-f)}.tp-fldv_b:active+.tp-fldv_i{color:var(--cnt-bg-a)}.tp-fldv.tp-v-disabled>.tp-fldv_i{opacity:.5}.tp-grlv{position:relative}.tp-grlv_g{display:block;height:calc(var(--cnt-usz)*3)}.tp-grlv_g polyline{fill:none;stroke:var(--mo-fg);stroke-linejoin:round}.tp-grlv_t{margin-top:-4px;transition:left .05s,top .05s;visibility:hidden}.tp-grlv_t.tp-grlv_t-a{visibility:visible}.tp-grlv_t.tp-grlv_t-in{transition:none}.tp-grlv.tp-v-disabled .tp-grlv_g{opacity:.5}.tp-grlv .tp-ttv{background-color:var(--mo-fg)}.tp-grlv .tp-ttv::before{border-top-color:var(--mo-fg)}.tp-lblv{align-items:center;display:flex;line-height:1.3;padding-left:var(--cnt-hp);padding-right:var(--cnt-hp)}.tp-lblv.tp-lblv-nol{display:block}.tp-lblv_l{color:var(--lbl-fg);flex:1;-webkit-hyphens:auto;hyphens:auto;overflow:hidden;padding-left:4px;padding-right:16px}.tp-lblv.tp-v-disabled .tp-lblv_l{opacity:.5}.tp-lblv.tp-lblv-nol .tp-lblv_l{display:none}.tp-lblv_v{align-self:flex-start;flex-grow:0;flex-shrink:0;width:var(--bld-vw)}.tp-lblv.tp-lblv-nol .tp-lblv_v{width:100%}.tp-lstv_s{padding:0 20px 0 var(--bld-hp);width:100%}.tp-lstv_m{color:var(--btn-fg)}.tp-sglv_i{padding-left:var(--bld-hp);padding-right:var(--bld-hp)}.tp-sglv.tp-v-disabled .tp-sglv_i{opacity:.5}.tp-mllv_i{display:block;height:calc(var(--cnt-usz)*3);line-height:var(--cnt-usz);padding-left:var(--bld-hp);padding-right:var(--bld-hp);resize:none;white-space:pre}.tp-mllv.tp-v-disabled .tp-mllv_i{opacity:.5}.tp-p2dv{position:relative}.tp-p2dv_h{display:flex}.tp-p2dv_b{height:var(--cnt-usz);margin-right:4px;position:relative;width:var(--cnt-usz)}.tp-p2dv_b svg{display:block;height:16px;left:50%;margin-left:-8px;margin-top:-8px;position:absolute;top:50%;width:16px}.tp-p2dv_b svg path{stroke:currentColor;stroke-width:2}.tp-p2dv_b svg circle{fill:currentColor}.tp-p2dv_t{flex:1}.tp-p2dv_p{height:0;margin-top:0;opacity:0;overflow:hidden;transition:height .2s ease-in-out,opacity .2s linear,margin .2s ease-in-out}.tp-p2dv.tp-p2dv-expanded .tp-p2dv_p{margin-top:var(--cnt-usp);opacity:1}.tp-p2dv .tp-popv{left:calc(-1*var(--cnt-hp));right:calc(-1*var(--cnt-hp));top:var(--cnt-usz)}.tp-p2dpv{padding-left:calc(var(--cnt-usz) + 4px)}.tp-p2dpv_p{cursor:crosshair;height:0;overflow:hidden;padding-bottom:100%;position:relative}.tp-p2dpv.tp-v-disabled .tp-p2dpv_p{opacity:.5}.tp-p2dpv_g{display:block;height:100%;left:0;pointer-events:none;position:absolute;top:0;width:100%}.tp-p2dpv_ax{opacity:.1;stroke:var(--in-fg);stroke-dasharray:1}.tp-p2dpv_l{opacity:.5;stroke:var(--in-fg);stroke-dasharray:1}.tp-p2dpv_m{border:var(--in-fg) solid 1px;border-radius:50%;box-sizing:border-box;height:4px;margin-left:-2px;margin-top:-2px;position:absolute;width:4px}.tp-p2dpv_p:focus .tp-p2dpv_m{background-color:var(--in-fg);border-width:0}.tp-popv{background-color:var(--bs-bg);border-radius:var(--bs-br);box-shadow:0 2px 4px var(--bs-sh);display:none;max-width:var(--bld-vw);padding:var(--cnt-vp) var(--cnt-hp);position:absolute;visibility:hidden;z-index:1000}.tp-popv.tp-popv-v{display:block;visibility:visible}.tp-sldv.tp-v-disabled{opacity:.5}.tp-sldv_t{box-sizing:border-box;cursor:pointer;height:var(--cnt-usz);margin:0 6px;outline:none;position:relative}.tp-sldv_t::before{background-color:var(--in-bg);border-radius:1px;content:"";display:block;height:2px;inset:0;margin:auto;position:absolute}.tp-sldv_k{height:100%;left:0;position:absolute;top:0}.tp-sldv_k::before{background-color:var(--in-fg);border-radius:1px;content:"";display:block;height:2px;inset:0;margin-bottom:auto;margin-top:auto;position:absolute}.tp-sldv_k::after{background-color:var(--btn-bg);border-radius:var(--bld-br);bottom:0;content:"";display:block;height:12px;margin-bottom:auto;margin-top:auto;position:absolute;right:-6px;top:0;width:12px}.tp-sldv_t:hover .tp-sldv_k::after{background-color:var(--btn-bg-h)}.tp-sldv_t:focus .tp-sldv_k::after{background-color:var(--btn-bg-f)}.tp-sldv_t:active .tp-sldv_k::after{background-color:var(--btn-bg-a)}.tp-sldtxtv{display:flex}.tp-sldtxtv_s{flex:2}.tp-sldtxtv_t{flex:1;margin-left:4px}.tp-tabv{position:relative}.tp-tabv_t{align-items:flex-end;color:var(--cnt-bg);display:flex;overflow:hidden;position:relative}.tp-tabv_t:hover{color:var(--cnt-bg-h)}.tp-tabv_t:has(*:focus){color:var(--cnt-bg-f)}.tp-tabv_t:has(*:active){color:var(--cnt-bg-a)}.tp-tabv_t::before{background-color:currentColor;bottom:0;content:"";height:2px;left:0;pointer-events:none;position:absolute;right:0}.tp-tabv.tp-v-disabled .tp-tabv_t::before{opacity:.5}.tp-tabv.tp-tabv-nop .tp-tabv_t{height:calc(var(--cnt-usz) + 4px);position:relative}.tp-tabv.tp-tabv-nop .tp-tabv_t::before{background-color:var(--cnt-bg);bottom:0;content:"";height:2px;left:0;position:absolute;right:0}.tp-tabv_i{bottom:0;color:var(--cnt-bg);left:0;overflow:hidden;position:absolute;top:calc(var(--cnt-usz) + 4px);width:max(var(--bs-br),4px)}.tp-tabv_i::before{background-color:currentColor;bottom:0;content:"";left:0;position:absolute;top:0;width:4px}.tp-tabv_t:hover+.tp-tabv_i{color:var(--cnt-bg-h)}.tp-tabv_t:has(*:focus)+.tp-tabv_i{color:var(--cnt-bg-f)}.tp-tabv_t:has(*:active)+.tp-tabv_i{color:var(--cnt-bg-a)}.tp-tabv.tp-v-disabled>.tp-tabv_i{opacity:.5}.tp-tbiv{flex:1;min-width:0;position:relative}.tp-tbiv+.tp-tbiv{margin-left:2px}.tp-tbiv+.tp-tbiv.tp-v-disabled::before{opacity:.5}.tp-tbiv_b{display:block;padding-left:calc(var(--cnt-hp) + 4px);padding-right:calc(var(--cnt-hp) + 4px);position:relative;width:100%}.tp-tbiv_b:disabled{opacity:.5}.tp-tbiv_b::before{background-color:var(--cnt-bg);content:"";inset:0 0 2px;pointer-events:none;position:absolute}.tp-tbiv_b:hover::before{background-color:var(--cnt-bg-h)}.tp-tbiv_b:focus::before{background-color:var(--cnt-bg-f)}.tp-tbiv_b:active::before{background-color:var(--cnt-bg-a)}.tp-tbiv_t{color:var(--cnt-fg);height:calc(var(--cnt-usz) + 4px);line-height:calc(var(--cnt-usz) + 4px);opacity:.5;overflow:hidden;position:relative;text-overflow:ellipsis}.tp-tbiv.tp-tbiv-sel .tp-tbiv_t{opacity:1}.tp-tbpv_c{padding-bottom:var(--cnt-vp);padding-left:4px;padding-top:var(--cnt-vp)}.tp-txtv{position:relative}.tp-txtv_i{padding-left:var(--bld-hp);padding-right:var(--bld-hp)}.tp-txtv.tp-txtv-fst .tp-txtv_i{border-bottom-right-radius:0;border-top-right-radius:0}.tp-txtv.tp-txtv-mid .tp-txtv_i{border-radius:0}.tp-txtv.tp-txtv-lst .tp-txtv_i{border-bottom-left-radius:0;border-top-left-radius:0}.tp-txtv.tp-txtv-num .tp-txtv_i{text-align:right}.tp-txtv.tp-txtv-drg .tp-txtv_i{opacity:.3}.tp-txtv_k{cursor:pointer;height:100%;left:calc(var(--bld-hp) - 5px);position:absolute;top:0;width:12px}.tp-txtv_k::before{background-color:var(--in-fg);border-radius:1px;bottom:0;content:"";height:calc(var(--cnt-usz) - 4px);left:50%;margin-bottom:auto;margin-left:-1px;margin-top:auto;opacity:.1;position:absolute;top:0;transition:border-radius .1s,height .1s,transform .1s,width .1s;width:2px}.tp-txtv_k:hover::before,.tp-txtv.tp-txtv-drg .tp-txtv_k::before{opacity:1}.tp-txtv.tp-txtv-drg .tp-txtv_k::before{border-radius:50%;height:4px;transform:translateX(-1px);width:4px}.tp-txtv_g{bottom:0;display:block;height:8px;left:50%;margin:auto;overflow:visible;pointer-events:none;position:absolute;top:0;visibility:hidden;width:100%}.tp-txtv.tp-txtv-drg .tp-txtv_g{visibility:visible}.tp-txtv_gb{fill:none;stroke:var(--in-fg);stroke-dasharray:1}.tp-txtv_gh{fill:none;stroke:var(--in-fg)}.tp-txtv .tp-ttv{margin-left:6px;visibility:hidden}.tp-txtv.tp-txtv-drg .tp-ttv{visibility:visible}.tp-ttv{background-color:var(--in-fg);border-radius:var(--bld-br);color:var(--bs-bg);padding:2px 4px;pointer-events:none;position:absolute;transform:translate(-50%, -100%)}.tp-ttv::before{border-color:var(--in-fg) rgba(0,0,0,0) rgba(0,0,0,0) rgba(0,0,0,0);border-style:solid;border-width:2px;box-sizing:border-box;content:"";font-size:.9em;height:4px;left:50%;margin-left:-2px;position:absolute;top:100%;width:4px}.tp-rotv{background-color:var(--bs-bg);border-radius:var(--bs-br);box-shadow:0 2px 4px var(--bs-sh);font-family:var(--bs-ff);font-size:11px;font-weight:500;line-height:1;text-align:left}.tp-rotv_b{border-bottom-left-radius:var(--bs-br);border-bottom-right-radius:var(--bs-br);border-top-left-radius:var(--bs-br);border-top-right-radius:var(--bs-br);padding-left:calc(4px + var(--cnt-usz) + var(--cnt-hp));text-align:center}.tp-rotv.tp-rotv-expanded .tp-rotv_b{border-bottom-left-radius:0;border-bottom-right-radius:0;transition-delay:0s;transition-duration:0s}.tp-rotv.tp-rotv-not>.tp-rotv_b{display:none}.tp-rotv_b:disabled .tp-rotv_m{display:none}.tp-rotv_c>.tp-fldv.tp-v-lst>.tp-fldv_c{border-bottom-left-radius:var(--bs-br);border-bottom-right-radius:var(--bs-br)}.tp-rotv_c>.tp-fldv.tp-v-lst>.tp-fldv_i{border-bottom-left-radius:var(--bs-br)}.tp-rotv_c>.tp-fldv.tp-v-lst:not(.tp-fldv-expanded)>.tp-fldv_b{border-bottom-left-radius:var(--bs-br);border-bottom-right-radius:var(--bs-br)}.tp-rotv_c>.tp-fldv.tp-v-lst.tp-fldv-expanded>.tp-fldv_b{transition-delay:0s;transition-duration:0s}.tp-rotv_c .tp-fldv.tp-v-vlst:not(.tp-fldv-expanded)>.tp-fldv_b{border-bottom-right-radius:var(--bs-br)}.tp-rotv.tp-rotv-not .tp-rotv_c>.tp-fldv.tp-v-fst{margin-top:calc(-1*var(--cnt-vp))}.tp-rotv.tp-rotv-not .tp-rotv_c>.tp-fldv.tp-v-fst>.tp-fldv_b{border-top-left-radius:var(--bs-br);border-top-right-radius:var(--bs-br)}.tp-rotv_c>.tp-tabv.tp-v-lst>.tp-tabv_c{border-bottom-left-radius:var(--bs-br);border-bottom-right-radius:var(--bs-br)}.tp-rotv_c>.tp-tabv.tp-v-lst>.tp-tabv_i{border-bottom-left-radius:var(--bs-br)}.tp-rotv.tp-rotv-not .tp-rotv_c>.tp-tabv.tp-v-fst{margin-top:calc(-1*var(--cnt-vp))}.tp-rotv.tp-rotv-not .tp-rotv_c>.tp-tabv.tp-v-fst>.tp-tabv_t{border-top-left-radius:var(--bs-br);border-top-right-radius:var(--bs-br)}.tp-rotv.tp-v-disabled,.tp-rotv .tp-v-disabled{pointer-events:none}.tp-rotv.tp-v-hidden,.tp-rotv .tp-v-hidden{display:none}.tp-sprv_r{background-color:var(--grv-fg);border-width:0;display:block;height:2px;margin:0;width:100%}.tp-sprv.tp-v-disabled .tp-sprv_r{opacity:.5}',
             plugins: [
                 ListBladePlugin,
                 SeparatorBladePlugin,
@@ -7801,28 +7883,7 @@ function embedStyle(doc, id, css) {
             ]
         });
     }
-    constructor(opt_config){
-        var _a, _b;
-        const config = opt_config !== null && opt_config !== void 0 ? opt_config : {};
-        const doc = (_a = config.document) !== null && _a !== void 0 ? _a : getWindowDocument();
-        const pool = createDefaultPluginPool();
-        const rootController = new RootController(doc, {
-            expanded: config.expanded,
-            blade: createBlade(),
-            props: ValueMap.fromObject({
-                title: config.title
-            }),
-            viewProps: ViewProps.create()
-        });
-        super(rootController, pool);
-        this.pool_ = pool;
-        this.containerElem_ = (_b = config.container) !== null && _b !== void 0 ? _b : createDefaultWrapperElement(doc);
-        this.containerElem_.appendChild(this.element);
-        this.doc_ = doc;
-        this.usesDefaultWrapper_ = !config.container;
-        this.setUpDefaultPlugins_();
-    }
 }
-const VERSION = new Semver('4.0.1');
+const VERSION = new Semver('4.0.4');
 
 export { BladeApi, ButtonApi, FolderApi, ListBladeApi, ListInputBindingApi, Pane, Semver, SeparatorBladeApi, SliderBladeApi, SliderInputBindingApi, TabApi, TabPageApi, TextBladeApi, TpChangeEvent, VERSION };

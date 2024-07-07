@@ -29,6 +29,37 @@ import { generateUUID } from '../math/MathUtils.js';
  *  - A single property can either be controlled through a
  *    target group or directly, but not both.
  */ class AnimationObjectGroup {
+    constructor(){
+        this.isAnimationObjectGroup = true;
+        this.uuid = generateUUID();
+        // cached objects followed by the active ones
+        this._objects = Array.prototype.slice.call(arguments);
+        this.nCachedObjects_ = 0; // threshold
+        // note: read by PropertyBinding.Composite
+        const indices = {};
+        this._indicesByUUID = indices; // for bookkeeping
+        for(let i = 0, n = arguments.length; i !== n; ++i){
+            indices[arguments[i].uuid] = i;
+        }
+        this._paths = []; // inside: string
+        this._parsedPaths = []; // inside: { we don't care, here }
+        this._bindings = []; // inside: Array< PropertyBinding >
+        this._bindingsIndicesByPath = {}; // inside: indices in these arrays
+        const scope = this;
+        this.stats = {
+            objects: {
+                get total () {
+                    return scope._objects.length;
+                },
+                get inUse () {
+                    return this.total - scope.nCachedObjects_;
+                }
+            },
+            get bindingsPerObject () {
+                return scope._bindings.length;
+            }
+        };
+    }
     add() {
         const objects = this._objects, indicesByUUID = this._indicesByUUID, paths = this._paths, parsedPaths = this._parsedPaths, bindings = this._bindings, nBindings = bindings.length;
         let knownObject = undefined, nObjects = objects.length, nCachedObjects = this.nCachedObjects_;
@@ -171,37 +202,6 @@ import { generateUUID } from '../math/MathUtils.js';
             paths[index] = paths[lastBindingsIndex];
             paths.pop();
         }
-    }
-    constructor(){
-        this.isAnimationObjectGroup = true;
-        this.uuid = generateUUID();
-        // cached objects followed by the active ones
-        this._objects = Array.prototype.slice.call(arguments);
-        this.nCachedObjects_ = 0; // threshold
-        // note: read by PropertyBinding.Composite
-        const indices = {};
-        this._indicesByUUID = indices; // for bookkeeping
-        for(let i = 0, n = arguments.length; i !== n; ++i){
-            indices[arguments[i].uuid] = i;
-        }
-        this._paths = []; // inside: string
-        this._parsedPaths = []; // inside: { we don't care, here }
-        this._bindings = []; // inside: Array< PropertyBinding >
-        this._bindingsIndicesByPath = {}; // inside: indices in these arrays
-        const scope = this;
-        this.stats = {
-            objects: {
-                get total () {
-                    return scope._objects.length;
-                },
-                get inUse () {
-                    return this.total - scope.nCachedObjects_;
-                }
-            },
-            get bindingsPerObject () {
-                return scope._bindings.length;
-            }
-        };
     }
 }
 

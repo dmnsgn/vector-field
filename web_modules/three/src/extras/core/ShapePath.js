@@ -12,7 +12,7 @@ import './Curve.js';
 import '../../math/Vector3.js';
 import '../../math/Quaternion.js';
 import '../../math/Matrix4.js';
-import '../../../../_chunks/Curves-1010459e.js';
+import '../../../../_chunks/Curves-cjyKFada.js';
 import '../curves/ArcCurve.js';
 import '../curves/EllipseCurve.js';
 import '../curves/CatmullRomCurve3.js';
@@ -27,6 +27,12 @@ import '../curves/SplineCurve.js';
 import '../Earcut.js';
 
 class ShapePath {
+    constructor(){
+        this.type = 'ShapePath';
+        this.color = new Color();
+        this.subPaths = [];
+        this.currentPath = null;
+    }
     moveTo(x, y) {
         this.currentPath = new Path();
         this.subPaths.push(this.currentPath);
@@ -189,12 +195,6 @@ class ShapePath {
         }
         //console.log("shape", shapes);
         return shapes;
-    }
-    constructor(){
-        this.type = 'ShapePath';
-        this.color = new Color();
-        this.subPaths = [];
-        this.currentPath = null;
     }
 }
 

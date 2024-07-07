@@ -25,28 +25,9 @@ import '../extras/DataUtils.js';
 
 const _vector = /*@__PURE__*/ new Vector3();
 class SpotLightHelper extends Object3D {
-    dispose() {
-        this.cone.geometry.dispose();
-        this.cone.material.dispose();
-    }
-    update() {
-        this.light.updateWorldMatrix(true, false);
-        this.light.target.updateWorldMatrix(true, false);
-        const coneLength = this.light.distance ? this.light.distance : 1000;
-        const coneWidth = coneLength * Math.tan(this.light.angle);
-        this.cone.scale.set(coneWidth, coneWidth, coneLength);
-        _vector.setFromMatrixPosition(this.light.target.matrixWorld);
-        this.cone.lookAt(_vector);
-        if (this.color !== undefined) {
-            this.cone.material.color.set(this.color);
-        } else {
-            this.cone.material.color.copy(this.light.color);
-        }
-    }
     constructor(light, color){
         super();
         this.light = light;
-        this.matrix = light.matrixWorld;
         this.matrixAutoUpdate = false;
         this.color = color;
         this.type = 'SpotLightHelper';
@@ -96,6 +77,32 @@ class SpotLightHelper extends Object3D {
         this.cone = new LineSegments(geometry, material);
         this.add(this.cone);
         this.update();
+    }
+    dispose() {
+        this.cone.geometry.dispose();
+        this.cone.material.dispose();
+    }
+    update() {
+        this.light.updateWorldMatrix(true, false);
+        this.light.target.updateWorldMatrix(true, false);
+        // update the local matrix based on the parent and light target transforms
+        if (this.parent) {
+            this.parent.updateWorldMatrix(true);
+            this.matrix.copy(this.parent.matrixWorld).invert().multiply(this.light.matrixWorld);
+        } else {
+            this.matrix.copy(this.light.matrixWorld);
+        }
+        this.matrixWorld.copy(this.light.matrixWorld);
+        const coneLength = this.light.distance ? this.light.distance : 1000;
+        const coneWidth = coneLength * Math.tan(this.light.angle);
+        this.cone.scale.set(coneWidth, coneWidth, coneLength);
+        _vector.setFromMatrixPosition(this.light.target.matrixWorld);
+        this.cone.lookAt(_vector);
+        if (this.color !== undefined) {
+            this.cone.material.color.set(this.color);
+        } else {
+            this.cone.material.color.copy(this.light.color);
+        }
     }
 }
 

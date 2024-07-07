@@ -1,4 +1,7 @@
 class Layers {
+    constructor(){
+        this.mask = 1 | 0;
+    }
     set(channel) {
         this.mask = (1 << channel | 0) >>> 0;
     }
@@ -22,9 +25,6 @@ class Layers {
     }
     isEnabled(channel) {
         return (this.mask & (1 << channel | 0)) !== 0;
-    }
-    constructor(){
-        this.mask = 1 | 0;
     }
 }
 

@@ -1,5 +1,9 @@
 let _id = 0;
 class WebGLShaderCache {
+    constructor(){
+        this.shaderCache = new Map();
+        this.materialCache = new Map();
+    }
     update(material) {
         const vertexShader = material.vertexShader;
         const fragmentShader = material.fragmentShader;
@@ -52,10 +56,6 @@ class WebGLShaderCache {
             cache.set(code, stage);
         }
         return stage;
-    }
-    constructor(){
-        this.shaderCache = new Map();
-        this.materialCache = new Map();
     }
 }
 class WebGLShaderStage {
